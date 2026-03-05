@@ -25,10 +25,23 @@ interface EmotionData {
   acceptance: number;
   peace: number;
   thoughts: string;
+  // 释放次数
+  releaseDespair: number;
+  releaseSorrow: number;
+  releaseFear: number;
+  releaseGreed: number;
+  releaseAnger: number;
+  releasePride: number;
+  releaseFearless: number;
+  releaseAcceptance: number;
+  releasePeace: number;
+  releaseWantApproval: number;
+  releaseWantControl: number;
+  releaseWantSecurity: number;
 }
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'emotions' | 'record' | 'stats'>('emotions');
+  const [activeTab, setActiveTab] = useState<'home' | 'stats' | 'help'>('home');
   const [desires, setDesires] = useState({
     wantApproval: 0,
     wantControl: 0,
@@ -45,6 +58,24 @@ const App: React.FC = () => {
     acceptance: 0,
     peace: 0
   });
+  
+  // 释放次数
+  const [releaseCounts, setReleaseCounts] = useState({
+    // 情绪释放次数
+    despair: 0,
+    sorrow: 0,
+    fear: 0,
+    greed: 0,
+    anger: 0,
+    pride: 0,
+    fearless: 0,
+    acceptance: 0,
+    peace: 0,
+    // 想要释放次数
+    wantApproval: 0,
+    wantControl: 0,
+    wantSecurity: 0
+  });
   const [thoughts, setThoughts] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
   const [emotionData, setEmotionData] = useState<EmotionData[]>([]);
@@ -52,8 +83,26 @@ const App: React.FC = () => {
     date: string;
     moods: Record<string, number>;
     desires: Record<string, number>;
+    releaseCounts: Record<string, number>;
     thoughts: string;
   } | null>(null);
+  
+  const [longPressModal, setLongPressModal] = useState<{
+    visible: boolean;
+    type: 'mood' | 'desire';
+    key: string;
+    label: string;
+    step: number;
+  }>({
+    visible: false,
+    type: 'mood',
+    key: '',
+    label: '',
+    step: 1
+  });
+  
+  // 当前显示的月份和年份
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   // 初始化IndexedDB
   const initDB = useCallback(() => {
@@ -140,6 +189,116 @@ const App: React.FC = () => {
     }));
   };
 
+  // 处理长按事件
+  const handleLongPress = (type: 'mood' | 'desire', key: string, label: string) => {
+    setLongPressModal({
+      visible: true,
+      type,
+      key,
+      label,
+      step: 1
+    });
+  };
+
+  // 处理按钮点击
+  const handleModalButtonClick = (response: 'yes' | 'no') => {
+    setLongPressModal(prev => {
+      if (prev.step === 1) {
+        // 第一步点击后进入第二步
+        return {
+          ...prev,
+          step: 2
+        };
+      } else if (prev.step === 2) {
+        // 第二步点击后进入第三步
+        return {
+          ...prev,
+          step: 3
+        };
+      } else if (prev.step === 3) {
+        // 第三步点击后进入第四步
+        return {
+          ...prev,
+          step: 4
+        };
+      } else if (prev.step === 4) {
+        // 第四步点击后进入第五步
+        // 更新释放次数
+        setReleaseCounts(prevCounts => ({
+          ...prevCounts,
+          [prev.key]: prevCounts[prev.key as keyof typeof prevCounts] + 1
+        }));
+        return {
+          ...prev,
+          step: 5
+        };
+      } else if (prev.step === 5) {
+        if (response === 'yes') {
+          // 点击"继续释放"，回到第一步
+          return {
+            ...prev,
+            step: 1
+          };
+        } else {
+          // 点击"结束"，关闭模态框
+          return {
+            ...prev,
+            visible: false
+          };
+        }
+      } else {
+        // 其他情况关闭模态框
+        return {
+          ...prev,
+          visible: false
+        };
+      }
+    });
+  };
+
+  // 创建长按处理函数
+  const createLongPressHandler = (type: 'mood' | 'desire', key: string, label: string) => {
+    let timer: NodeJS.Timeout | null = null;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const threshold = 10; // 滑动阈值
+
+    return {
+      onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
+        timer = setTimeout(() => {
+          handleLongPress(type, key, label);
+        }, 500);
+        e.currentTarget.addEventListener('mouseup', () => {
+          if (timer) clearTimeout(timer);
+        });
+        e.currentTarget.addEventListener('mouseleave', () => {
+          if (timer) clearTimeout(timer);
+        });
+      },
+      onTouchStart: (e: React.TouchEvent<HTMLButtonElement>) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        timer = setTimeout(() => {
+          handleLongPress(type, key, label);
+        }, 500);
+        e.currentTarget.addEventListener('touchend', () => {
+          if (timer) clearTimeout(timer);
+        });
+        e.currentTarget.addEventListener('touchmove', (touchEvent) => {
+          if (!timer) return;
+          const touchX = touchEvent.touches[0].clientX;
+          const touchY = touchEvent.touches[0].clientY;
+          const diffX = Math.abs(touchX - touchStartX);
+          const diffY = Math.abs(touchY - touchStartY);
+          if (diffX > threshold || diffY > threshold) {
+            clearTimeout(timer);
+            timer = null;
+          }
+        });
+      }
+    };
+  };
+
   // 自动保存
   useEffect(() => {
     if (desires.wantApproval > 0 || desires.wantControl > 0 || desires.wantSecurity > 0 || Object.values(moods).some(count => count > 0)) {
@@ -165,13 +324,26 @@ const App: React.FC = () => {
           fearless: moods.fearless,
           acceptance: moods.acceptance,
           peace: moods.peace,
-          thoughts
+          thoughts,
+          // 释放次数
+          releaseDespair: releaseCounts.despair,
+          releaseSorrow: releaseCounts.sorrow,
+          releaseFear: releaseCounts.fear,
+          releaseGreed: releaseCounts.greed,
+          releaseAnger: releaseCounts.anger,
+          releasePride: releaseCounts.pride,
+          releaseFearless: releaseCounts.fearless,
+          releaseAcceptance: releaseCounts.acceptance,
+          releasePeace: releaseCounts.peace,
+          releaseWantApproval: releaseCounts.wantApproval,
+          releaseWantControl: releaseCounts.wantControl,
+          releaseWantSecurity: releaseCounts.wantSecurity
         });
       }, 2000);
 
       return () => clearTimeout(saveTimer);
     }
-  }, [desires, moods, thoughts, saveData]);
+  }, [desires, moods, thoughts, releaseCounts, saveData]);
 
   // 每天24点归零
   useEffect(() => {
@@ -197,6 +369,20 @@ const App: React.FC = () => {
           fearless: 0,
           acceptance: 0,
           peace: 0
+        });
+        setReleaseCounts({
+          despair: 0,
+          sorrow: 0,
+          fear: 0,
+          greed: 0,
+          anger: 0,
+          pride: 0,
+          fearless: 0,
+          acceptance: 0,
+          peace: 0,
+          wantApproval: 0,
+          wantControl: 0,
+          wantSecurity: 0
         });
         setThoughts('');
       }
@@ -242,6 +428,20 @@ const App: React.FC = () => {
           acceptance: dayData.acceptance || 0,
           peace: dayData.peace || 0
         });
+        setReleaseCounts({
+          despair: dayData.releaseDespair || 0,
+          sorrow: dayData.releaseSorrow || 0,
+          fear: dayData.releaseFear || 0,
+          greed: dayData.releaseGreed || 0,
+          anger: dayData.releaseAnger || 0,
+          pride: dayData.releasePride || 0,
+          fearless: dayData.releaseFearless || 0,
+          acceptance: dayData.releaseAcceptance || 0,
+          peace: dayData.releasePeace || 0,
+          wantApproval: dayData.releaseWantApproval || 0,
+          wantControl: dayData.releaseWantControl || 0,
+          wantSecurity: dayData.releaseWantSecurity || 0
+        });
         setThoughts(dayData.thoughts);
       } else {
         setDesires({
@@ -260,6 +460,20 @@ const App: React.FC = () => {
           acceptance: 0,
           peace: 0
         });
+        setReleaseCounts({
+          despair: 0,
+          sorrow: 0,
+          fear: 0,
+          greed: 0,
+          anger: 0,
+          pride: 0,
+          fearless: 0,
+          acceptance: 0,
+          peace: 0,
+          wantApproval: 0,
+          wantControl: 0,
+          wantSecurity: 0
+        });
         setThoughts('');
       }
     }
@@ -267,9 +481,8 @@ const App: React.FC = () => {
 
   // 生成月历数据
   const generateCalendar = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
     
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
@@ -322,6 +535,20 @@ const App: React.FC = () => {
           wantControl: dayData.wantControl || 0,
           wantSecurity: dayData.wantSecurity || 0
         },
+        releaseCounts: {
+          despair: dayData.releaseDespair || 0,
+          sorrow: dayData.releaseSorrow || 0,
+          fear: dayData.releaseFear || 0,
+          greed: dayData.releaseGreed || 0,
+          anger: dayData.releaseAnger || 0,
+          pride: dayData.releasePride || 0,
+          fearless: dayData.releaseFearless || 0,
+          acceptance: dayData.releaseAcceptance || 0,
+          peace: dayData.releasePeace || 0,
+          wantApproval: dayData.releaseWantApproval || 0,
+          wantControl: dayData.releaseWantControl || 0,
+          wantSecurity: dayData.releaseWantSecurity || 0
+        },
         thoughts: dayData.thoughts || ''
       });
     } else {
@@ -329,6 +556,7 @@ const App: React.FC = () => {
         date: dateStr,
         moods: {},
         desires: {},
+        releaseCounts: {},
         thoughts: ''
       });
     }
@@ -364,9 +592,8 @@ const App: React.FC = () => {
 
   // 生成情绪饼状图数据
   const generateMoodPieData = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
     
     const monthData = emotionData.filter(item => {
       const itemDate = new Date(item.date);
@@ -395,33 +622,26 @@ const App: React.FC = () => {
       peace += item.peace || 0;
     });
     
+    // 过滤掉值为0的数据
+    const moodData = [
+      { label: '万念俱灰', value: despair, color: '#94a3b8', borderColor: '#334155' },
+      { label: '悲苦', value: sorrow, color: '#fda4af', borderColor: '#dc2626' },
+      { label: '恐惧', value: fear, color: '#93c5fd', borderColor: '#1d4ed8' },
+      { label: '贪求', value: greed, color: '#fcd34d', borderColor: '#d97706' },
+      { label: '愤怒', value: anger, color: '#f87171', borderColor: '#b91c1c' },
+      { label: '自尊自傲', value: pride, color: '#c4b5fd', borderColor: '#7e22ce' },
+      { label: '无畏', value: fearless, color: '#6ee7b7', borderColor: '#059669' },
+      { label: '接纳', value: acceptance, color: '#a78bfa', borderColor: '#6d28d9' },
+      { label: '平静', value: peace, color: '#94a3b8', borderColor: '#334155' }
+    ].filter(item => item.value > 0);
+    
     return {
       data: {
-        labels: ['万念俱灰', '悲苦', '恐惧', '贪求', '愤怒', '自尊自傲', '无畏', '接纳', '平静'],
+        labels: moodData.map(item => item.label),
         datasets: [{
-          data: [despair, sorrow, fear, greed, anger, pride, fearless, acceptance, peace],
-          backgroundColor: [
-            '#94a3b8',
-            '#fda4af',
-            '#93c5fd',
-            '#fcd34d',
-            '#f87171',
-            '#c4b5fd',
-            '#6ee7b7',
-            '#a78bfa',
-            '#94a3b8'
-          ],
-          borderColor: [
-            '#334155',
-            '#dc2626',
-            '#1d4ed8',
-            '#d97706',
-            '#b91c1c',
-            '#7e22ce',
-            '#059669',
-            '#6d28d9',
-            '#334155'
-          ],
+          data: moodData.map(item => item.value),
+          backgroundColor: moodData.map(item => item.color),
+          borderColor: moodData.map(item => item.borderColor),
           borderWidth: 1
         }]
       },
@@ -436,8 +656,7 @@ const App: React.FC = () => {
               weight: 'bold' as const
             },
             formatter: function(value: any, context: any) {
-              const labels = ['万念俱灰', '悲苦', '恐惧', '贪求', '愤怒', '自尊自傲', '无畏', '接纳', '平静'];
-              return `${labels[context.dataIndex]}\n${value}`;
+              return `${moodData[context.dataIndex].label}\n${value}`;
             }
           }
         }
@@ -447,9 +666,8 @@ const App: React.FC = () => {
 
   // 生成想要饼状图数据
   const generateDesirePieData = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
     
     const monthData = emotionData.filter(item => {
       const itemDate = new Date(item.date);
@@ -466,21 +684,20 @@ const App: React.FC = () => {
       wantSecurity += item.wantSecurity || 0;
     });
     
+    // 过滤掉值为0的数据
+    const desireData = [
+      { label: '想被认同', value: wantApproval, color: '#dbeafe', borderColor: '#1e40af' },
+      { label: '想要控制', value: wantControl, color: '#d1fae5', borderColor: '#065f46' },
+      { label: '想要安全', value: wantSecurity, color: '#fef3c7', borderColor: '#92400e' }
+    ].filter(item => item.value > 0);
+    
     return {
       data: {
-        labels: ['想被认同', '想要控制', '想要安全'],
+        labels: desireData.map(item => item.label),
         datasets: [{
-          data: [wantApproval, wantControl, wantSecurity],
-          backgroundColor: [
-            '#dbeafe',
-            '#d1fae5',
-            '#fef3c7'
-          ],
-          borderColor: [
-            '#1e40af',
-            '#065f46',
-            '#92400e'
-          ],
+          data: desireData.map(item => item.value),
+          backgroundColor: desireData.map(item => item.color),
+          borderColor: desireData.map(item => item.borderColor),
           borderWidth: 1
         }]
       },
@@ -495,8 +712,8 @@ const App: React.FC = () => {
               weight: 'bold' as const
             },
             formatter: function(value: any, context: any) {
-              const labels = ['想被认同', '想要控制', '想要安全'];
-              return `${labels[context.dataIndex]}\n${value}`;
+              return `${desireData[context.dataIndex].label}
+${value}`;
             }
           }
         }
@@ -520,121 +737,174 @@ const App: React.FC = () => {
   const moodPieData = generateMoodPieData();
   const desirePieData = generateDesirePieData();
 
+  const [showFirstTimeHint, setShowFirstTimeHint] = useState(false);
+
+  // 检查是否首次使用
+  useEffect(() => {
+    const hasSeenHint = localStorage.getItem('hasSeenFirstTimeHint');
+    if (!hasSeenHint) {
+      setShowFirstTimeHint(true);
+    }
+  }, []);
+
+  // 处理不再提示
+  const handleDontShowAgain = () => {
+    localStorage.setItem('hasSeenFirstTimeHint', 'true');
+    setShowFirstTimeHint(false);
+  };
+
   return (
     <div className="app">
-      <h1 className="h1">心情记录</h1>
+      <header className="banner">
+        <h1 className="banner-title">释放法</h1>
+      </header>
 
-      {activeTab === 'emotions' && (
-        <div className="record-section">
-          <div className="buttons-container">
+      {/* 首次使用提示 */}
+      {showFirstTimeHint && (
+        <div className="first-time-hint-overlay">
+          <div className="first-time-hint-content">
+            <div className="first-time-hint-text">
+              <p>单击按钮记录，长按开启释放。</p>
+              <p>下方数字表示记录次数，</p>
+              <p>上方数字表示释放次数。</p>
+            </div>
             <button 
-              className="emotion-button despair"
-              onClick={() => handleMoodClick('despair')}
+              className="first-time-hint-button"
+              onClick={handleDontShowAgain}
             >
-              <div className="emotion-count">{moods.despair}</div>
-              <div className="emotion-label">万念俱灰</div>
+              不再提示
             </button>
-            <button 
-              className="emotion-button sorrow"
-              onClick={() => handleMoodClick('sorrow')}
-            >
-              <div className="emotion-count">{moods.sorrow}</div>
-              <div className="emotion-label">悲苦</div>
-            </button>
-            <button 
-              className="emotion-button fear"
-              onClick={() => handleMoodClick('fear')}
-            >
-              <div className="emotion-count">{moods.fear}</div>
-              <div className="emotion-label">恐惧</div>
-            </button>
-            <button 
-              className="emotion-button greed"
-              onClick={() => handleMoodClick('greed')}
-            >
-              <div className="emotion-count">{moods.greed}</div>
-              <div className="emotion-label">贪求</div>
-            </button>
-            <button 
-              className="emotion-button anger"
-              onClick={() => handleMoodClick('anger')}
-            >
-              <div className="emotion-count">{moods.anger}</div>
-              <div className="emotion-label">愤怒</div>
-            </button>
-            <button 
-              className="emotion-button pride"
-              onClick={() => handleMoodClick('pride')}
-            >
-              <div className="emotion-count">{moods.pride}</div>
-              <div className="emotion-label">自尊自傲</div>
-            </button>
-            <button 
-              className="emotion-button fearless"
-              onClick={() => handleMoodClick('fearless')}
-            >
-              <div className="emotion-count">{moods.fearless}</div>
-              <div className="emotion-label">无畏</div>
-            </button>
-            <button 
-              className="emotion-button acceptance"
-              onClick={() => handleMoodClick('acceptance')}
-            >
-              <div className="emotion-count">{moods.acceptance}</div>
-              <div className="emotion-label">接纳</div>
-            </button>
-            <button 
-              className="emotion-button peace"
-              onClick={() => handleMoodClick('peace')}
-            >
-              <div className="emotion-count">{moods.peace}</div>
-              <div className="emotion-label">平静</div>
-            </button>
-          </div>
-          
-          <div className="thoughts-section">
-            <h3>今日感想</h3>
-            <textarea
-              className="thoughts-textarea"
-              placeholder="记录你的感想..."
-              value={thoughts}
-              onChange={(e) => {
-                setThoughts(e.target.value);
-              }}
-            />
-            {saveStatus && <div className="save-status">{saveStatus}</div>}
           </div>
         </div>
       )}
 
-      {activeTab === 'record' && (
+      {activeTab === 'home' && (
         <div className="record-section">
-          <div className="buttons-container">
-            <button 
-              className="emotion-button want-approval"
-              onClick={() => handleDesireClick('wantApproval')}
-            >
-              <div className="emotion-count">{desires.wantApproval}</div>
-              <div className="emotion-label">想被认同</div>
-            </button>
-            <button 
-              className="emotion-button want-control"
-              onClick={() => handleDesireClick('wantControl')}
-            >
-              <div className="emotion-count">{desires.wantControl}</div>
-              <div className="emotion-label">想要控制</div>
-            </button>
-            <button 
-              className="emotion-button want-security"
-              onClick={() => handleDesireClick('wantSecurity')}
-            >
-              <div className="emotion-count">{desires.wantSecurity}</div>
-              <div className="emotion-label">想要安全</div>
-            </button>
+          <div className="section">
+            <div className="buttons-container">
+              <button 
+                className="emotion-button despair"
+                onClick={() => handleMoodClick('despair')}
+                {...createLongPressHandler('mood', 'despair', '万念俱灰')}
+              >
+                <div className="release-count">{releaseCounts.despair}</div>
+                <div className="emotion-label">万念俱灰</div>
+                <div className="emotion-count">{moods.despair}</div>
+              </button>
+              <button 
+                className="emotion-button sorrow"
+                onClick={() => handleMoodClick('sorrow')}
+                {...createLongPressHandler('mood', 'sorrow', '悲苦')}
+              >
+                <div className="release-count">{releaseCounts.sorrow}</div>
+                <div className="emotion-label">悲苦</div>
+                <div className="emotion-count">{moods.sorrow}</div>
+              </button>
+              <button 
+                className="emotion-button fear"
+                onClick={() => handleMoodClick('fear')}
+                {...createLongPressHandler('mood', 'fear', '恐惧')}
+              >
+                <div className="release-count">{releaseCounts.fear}</div>
+                <div className="emotion-label">恐惧</div>
+                <div className="emotion-count">{moods.fear}</div>
+              </button>
+              <button 
+                className="emotion-button greed"
+                onClick={() => handleMoodClick('greed')}
+                {...createLongPressHandler('mood', 'greed', '贪求')}
+              >
+                <div className="release-count">{releaseCounts.greed}</div>
+                <div className="emotion-label">贪求</div>
+                <div className="emotion-count">{moods.greed}</div>
+              </button>
+              <button 
+                className="emotion-button anger"
+                onClick={() => handleMoodClick('anger')}
+                {...createLongPressHandler('mood', 'anger', '愤怒')}
+              >
+                <div className="release-count">{releaseCounts.anger}</div>
+                <div className="emotion-label">愤怒</div>
+                <div className="emotion-count">{moods.anger}</div>
+              </button>
+              <button 
+                className="emotion-button pride"
+                onClick={() => handleMoodClick('pride')}
+                {...createLongPressHandler('mood', 'pride', '自尊自傲')}
+              >
+                <div className="release-count">{releaseCounts.pride}</div>
+                <div className="emotion-label">自尊自傲</div>
+                <div className="emotion-count">{moods.pride}</div>
+              </button>
+              <button 
+                className="emotion-button fearless"
+                onClick={() => handleMoodClick('fearless')}
+                {...createLongPressHandler('mood', 'fearless', '无畏')}
+              >
+                <div className="release-count">{releaseCounts.fearless}</div>
+                <div className="emotion-label">无畏</div>
+                <div className="emotion-count">{moods.fearless}</div>
+              </button>
+              <button 
+                className="emotion-button acceptance"
+                onClick={() => handleMoodClick('acceptance')}
+                {...createLongPressHandler('mood', 'acceptance', '接纳')}
+              >
+                <div className="release-count">{releaseCounts.acceptance}</div>
+                <div className="emotion-label">接纳</div>
+                <div className="emotion-count">{moods.acceptance}</div>
+              </button>
+              <button 
+                className="emotion-button peace"
+                onClick={() => handleMoodClick('peace')}
+                {...createLongPressHandler('mood', 'peace', '平静')}
+              >
+                <div className="release-count">{releaseCounts.peace}</div>
+                <div className="emotion-label">平静</div>
+                <div className="emotion-count">{moods.peace}</div>
+              </button>
+            </div>
           </div>
           
-          <div className="thoughts-section">
-            <h3>今日感想</h3>
+          <hr className="divider" />
+          
+          <div className="section">
+            <div className="buttons-container">
+              <button 
+                className="emotion-button want-approval"
+                onClick={() => handleDesireClick('wantApproval')}
+                {...createLongPressHandler('desire', 'wantApproval', '想被认同')}
+              >
+                <div className="release-count">{releaseCounts.wantApproval}</div>
+                <div className="emotion-label">想被认同</div>
+                <div className="emotion-count">{desires.wantApproval}</div>
+              </button>
+              <button 
+                className="emotion-button want-control"
+                onClick={() => handleDesireClick('wantControl')}
+                {...createLongPressHandler('desire', 'wantControl', '想要控制')}
+              >
+                <div className="release-count">{releaseCounts.wantControl}</div>
+                <div className="emotion-label">想要控制</div>
+                <div className="emotion-count">{desires.wantControl}</div>
+              </button>
+              <button 
+                className="emotion-button want-security"
+                onClick={() => handleDesireClick('wantSecurity')}
+                {...createLongPressHandler('desire', 'wantSecurity', '想要安全')}
+              >
+                <div className="release-count">{releaseCounts.wantSecurity}</div>
+                <div className="emotion-label">想要安全</div>
+                <div className="emotion-count">{desires.wantSecurity}</div>
+              </button>
+            </div>
+          </div>
+          
+          <div className="section thoughts-section">
+            <div className="thoughts-section-header">
+              <h3>今日感想</h3>
+              {saveStatus && <div className="save-status">{saveStatus}</div>}
+            </div>
             <textarea
               className="thoughts-textarea"
               placeholder="记录你的感想..."
@@ -643,7 +913,6 @@ const App: React.FC = () => {
                 setThoughts(e.target.value);
               }}
             />
-            {saveStatus && <div className="save-status">{saveStatus}</div>}
           </div>
         </div>
       )}
@@ -652,17 +921,42 @@ const App: React.FC = () => {
         <div className="charts-section">
           <div className="pie-charts-container">
             <div className="pie-chart-item">
-              <h3>本月情绪统计</h3>
+              <h3>当月情绪统计</h3>
               <Pie data={moodPieData.data} options={moodPieData.options} />
             </div>
             <div className="pie-chart-item">
-              <h3>本月想要统计</h3>
+              <h3>当月想要统计</h3>
               <Pie data={desirePieData.data} options={desirePieData.options} />
             </div>
           </div>
           
           <div className="stats-content">
             <div className="calendar-container">
+              <div className="calendar-nav">
+                <button 
+                  className="nav-button"
+                  onClick={() => setCurrentDate(prev => {
+                    const newDate = new Date(prev);
+                    newDate.setMonth(prev.getMonth() - 1);
+                    return newDate;
+                  })}
+                >
+                  上一月
+                </button>
+                <div className="current-month">
+                  {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月
+                </div>
+                <button 
+                  className="nav-button"
+                  onClick={() => setCurrentDate(prev => {
+                    const newDate = new Date(prev);
+                    newDate.setMonth(prev.getMonth() + 1);
+                    return newDate;
+                  })}
+                >
+                  下一月
+                </button>
+              </div>
               <div className="calendar-header">
                 <div className="calendar-header-day">一</div>
                 <div className="calendar-header-day">二</div>
@@ -697,22 +991,28 @@ const App: React.FC = () => {
                 <h3>{selectedDayData.date}</h3>
                 <div className="day-buttons">
                   {Object.entries(selectedDayData.moods).map(([key, value]) => {
-                    if (value > 0) {
+                    // 检查释放次数
+                    const releaseCount = selectedDayData.releaseCounts?.[key] || 0;
+                    if (value > 0 || releaseCount > 0) {
                       return (
                         <button key={key} className={`emotion-button ${key}`}>
-                          <div className="emotion-count">{value}</div>
+                          <div className="release-count">{releaseCount}</div>
                           <div className="emotion-label">{getMoodLabel(key)}</div>
+                          <div className="emotion-count">{value}</div>
                         </button>
                       );
                     }
                     return null;
                   })}
                   {Object.entries(selectedDayData.desires).map(([key, value]) => {
-                    if (value > 0) {
+                    // 检查释放次数
+                    const releaseCount = selectedDayData.releaseCounts?.[key] || 0;
+                    if (value > 0 || releaseCount > 0) {
                       return (
                         <button key={key} className={`emotion-button want-${key.replace('want', '').toLowerCase()}`}>
-                          <div className="emotion-count">{value}</div>
+                          <div className="release-count">{releaseCount}</div>
                           <div className="emotion-label">{getDesireLabel(key)}</div>
+                          <div className="emotion-count">{value}</div>
                         </button>
                       );
                     }
@@ -737,18 +1037,110 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {activeTab === 'help' && (
+        <div className="help-section">
+          <div className="card">
+            <h3>风的六步骤</h3>
+            <hr className="step-divider" />
+            <div className="steps-list">
+              <div className="step-item">
+                <div className="step-number">1</div>
+                <div className="step-content">
+                  <p>你必须想要自由超过想要世界。你必须想要自由超过想要被认同和想要控制。想要被认同和想要控制=世界</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">2</div>
+                <div className="step-content">
+                  <p>做出自由的决定。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">3</div>
+                <div className="step-content">
+                  <p>所有感受都来自想要被认同和想要控制，它们都是生存程序。释放它们。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">4</div>
+                <div className="step-content">
+                  <p>持续释放。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">5</div>
+                <div className="step-content">
+                  <p>当你卡住时，释放对卡住的感受的想要改变。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">6</div>
+                <div className="step-content">
+                  <p>每次你释放，你都更愉悦、轻松、脱离限制。随着释放，你会越来越愉悦、轻松、脱离限制。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <h3>其他资料</h3>
+            <hr className="step-divider" />
+            <div className="steps-list">
+              <div className="step-item">
+                <div className="step-content">
+                  <p>B站搜索 "92年原始释放法"</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>B站&lt;哈师傅不是哈师父&gt;，分享释放法相关的视频和直播</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>相关书籍《决定自由》《莱斯特自传》等</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <h3>关于此网站的使用</h3>
+            <hr className="step-divider" />
+            <div className="steps-list">
+              <div className="step-item">
+                <div className="step-content">
+                  <p>首次打开此网站需"添加到主屏幕"，此后就可以离线使用了</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>此网站所有数据都保存在本地浏览器中，清理缓存时须留意。&lt;导出数据&gt;按钮可以备份数据，更换手机时也可以重新导入</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>苹果手机推荐一个非常好的应用&lt;释放法练习&gt;，就在APP store</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="tabs">
         <button 
-          className={`tab ${activeTab === 'emotions' ? 'active' : ''}`}
-          onClick={() => setActiveTab('emotions')}
+          className={`tab ${activeTab === 'home' ? 'active' : ''}`}
+          onClick={() => setActiveTab('home')}
         >
-          今日情绪
-        </button>
-        <button 
-          className={`tab ${activeTab === 'record' ? 'active' : ''}`}
-          onClick={() => setActiveTab('record')}
-        >
-          今日想要
+          记录/释放
         </button>
         <button 
           className={`tab ${activeTab === 'stats' ? 'active' : ''}`}
@@ -756,7 +1148,57 @@ const App: React.FC = () => {
         >
           统计分析
         </button>
+        <button 
+          className={`tab ${activeTab === 'help' ? 'active' : ''}`}
+          onClick={() => setActiveTab('help')}
+        >
+          帮助
+        </button>
       </div>
+
+      {/* 长按模态框 */}
+      {longPressModal.visible && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <button 
+                className={`emotion-button ${longPressModal.key}`}
+                style={{ margin: '0 auto' }}
+              >
+                <div className="emotion-label">{longPressModal.label}</div>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-text">
+                {longPressModal.step === 1 ? '你能仅仅是允许自己感受它吗？' : 
+                 longPressModal.step === 2 ? '你愿意释放它吗？' : 
+                 longPressModal.step === 3 ? '什么时候释放？' : 
+                 longPressModal.step === 4 ? '现在，你有感觉好一点或更轻松一点吗？' : '本次释放完成！'}
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="modal-button no-button"
+                onClick={() => handleModalButtonClick('no')}
+              >
+                {longPressModal.step === 1 ? '不能' : 
+                 longPressModal.step === 2 ? '不愿意' : 
+                 longPressModal.step === 3 ? '以后' : 
+                 longPressModal.step === 4 ? '没有' : '结束'}
+              </button>
+              <button 
+                className="modal-button yes-button"
+                onClick={() => handleModalButtonClick('yes')}
+              >
+                {longPressModal.step === 1 ? '能' : 
+                 longPressModal.step === 2 ? '愿意' : 
+                 longPressModal.step === 3 ? '现在' : 
+                 longPressModal.step === 4 ? '有' : '继续释放'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

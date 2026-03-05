@@ -4,15 +4,19 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    host: '0.0.0.0', // 关键配置：监听所有网络接口
+    port: 5173,       // 你的端口
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: '心情记录',
-        short_name: '心情记录',
-        description: '记录心情和感悟',
+        name: '释放法',
+        short_name: '释放法',
+        description: '释放法',
         theme_color: '#ffffff',
         icons: [
           {
