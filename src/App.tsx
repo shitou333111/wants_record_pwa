@@ -101,6 +101,18 @@ const App: React.FC = () => {
     step: 1
   });
   
+  // 控制body的modal-open类
+  useEffect(() => {
+    if (longPressModal.visible) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [longPressModal.visible]);
+  
   // 当前显示的月份和年份
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -148,18 +160,36 @@ const App: React.FC = () => {
 
   // 保存数据
   const saveData = useCallback(async (data: EmotionData) => {
+    console.log('开始保存数据:', data);
     try {
       const db = await initDB();
+      console.log('数据库初始化成功:', db);
       const transaction = db.transaction('emotions', 'readwrite');
+      console.log('事务创建成功:', transaction);
       const store = transaction.objectStore('emotions');
+      console.log('对象存储创建成功:', store);
       
       // 直接保存或更新数据
-      store.put(data);
+      const request = store.put(data);
+      console.log('保存请求发送:', request);
+      
+      request.onsuccess = () => {
+        console.log('保存成功');
+      };
+      
+      request.onerror = (event) => {
+        console.error('保存请求失败:', event);
+      };
       
       transaction.oncomplete = () => {
+        console.log('事务完成');
         setSaveStatus('保存成功');
         setTimeout(() => setSaveStatus(''), 2000);
         loadData();
+      };
+      
+      transaction.onerror = (event) => {
+        console.error('事务失败:', event);
       };
     } catch (error) {
       console.error('保存数据失败:', error);
@@ -175,18 +205,100 @@ const App: React.FC = () => {
 
   // 处理想要按钮点击
   const handleDesireClick = (desire: keyof typeof desires) => {
-    setDesires(prev => ({
-      ...prev,
-      [desire]: prev[desire] + 1
-    }));
+    setDesires(prev => {
+      const newDesires = {
+        ...prev,
+        [desire]: prev[desire] + 1
+      };
+      
+      // 立即保存数据
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const date = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${date}`;
+      
+      saveData({
+        date: todayStr,
+        wantApproval: newDesires.wantApproval,
+        wantControl: newDesires.wantControl,
+        wantSecurity: newDesires.wantSecurity,
+        despair: moods.despair,
+        sorrow: moods.sorrow,
+        fear: moods.fear,
+        greed: moods.greed,
+        anger: moods.anger,
+        pride: moods.pride,
+        fearless: moods.fearless,
+        acceptance: moods.acceptance,
+        peace: moods.peace,
+        thoughts,
+        // 释放次数
+        releaseDespair: releaseCounts.despair,
+        releaseSorrow: releaseCounts.sorrow,
+        releaseFear: releaseCounts.fear,
+        releaseGreed: releaseCounts.greed,
+        releaseAnger: releaseCounts.anger,
+        releasePride: releaseCounts.pride,
+        releaseFearless: releaseCounts.fearless,
+        releaseAcceptance: releaseCounts.acceptance,
+        releasePeace: releaseCounts.peace,
+        releaseWantApproval: releaseCounts.wantApproval,
+        releaseWantControl: releaseCounts.wantControl,
+        releaseWantSecurity: releaseCounts.wantSecurity
+      });
+      
+      return newDesires;
+    });
   };
 
   // 处理情绪按钮点击
   const handleMoodClick = (mood: keyof typeof moods) => {
-    setMoods(prev => ({
-      ...prev,
-      [mood]: prev[mood] + 1
-    }));
+    setMoods(prev => {
+      const newMoods = {
+        ...prev,
+        [mood]: prev[mood] + 1
+      };
+      
+      // 立即保存数据
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const date = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${date}`;
+      
+      saveData({
+        date: todayStr,
+        wantApproval: desires.wantApproval,
+        wantControl: desires.wantControl,
+        wantSecurity: desires.wantSecurity,
+        despair: newMoods.despair,
+        sorrow: newMoods.sorrow,
+        fear: newMoods.fear,
+        greed: newMoods.greed,
+        anger: newMoods.anger,
+        pride: newMoods.pride,
+        fearless: newMoods.fearless,
+        acceptance: newMoods.acceptance,
+        peace: newMoods.peace,
+        thoughts,
+        // 释放次数
+        releaseDespair: releaseCounts.despair,
+        releaseSorrow: releaseCounts.sorrow,
+        releaseFear: releaseCounts.fear,
+        releaseGreed: releaseCounts.greed,
+        releaseAnger: releaseCounts.anger,
+        releasePride: releaseCounts.pride,
+        releaseFearless: releaseCounts.fearless,
+        releaseAcceptance: releaseCounts.acceptance,
+        releasePeace: releaseCounts.peace,
+        releaseWantApproval: releaseCounts.wantApproval,
+        releaseWantControl: releaseCounts.wantControl,
+        releaseWantSecurity: releaseCounts.wantSecurity
+      });
+      
+      return newMoods;
+    });
   };
 
   // 处理长按事件
@@ -301,52 +413,56 @@ const App: React.FC = () => {
 
   // 自动保存
   useEffect(() => {
-    if (desires.wantApproval > 0 || desires.wantControl > 0 || desires.wantSecurity > 0 || Object.values(moods).some(count => count > 0)) {
-      // 使用本地时间获取日期字符串，避免时区问题
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const date = String(today.getDate()).padStart(2, '0');
-      const todayStr = `${year}-${month}-${date}`;
-      
-      const saveTimer = setTimeout(() => {
-        saveData({
-          date: todayStr,
-          wantApproval: desires.wantApproval,
-          wantControl: desires.wantControl,
-          wantSecurity: desires.wantSecurity,
-          despair: moods.despair,
-          sorrow: moods.sorrow,
-          fear: moods.fear,
-          greed: moods.greed,
-          anger: moods.anger,
-          pride: moods.pride,
-          fearless: moods.fearless,
-          acceptance: moods.acceptance,
-          peace: moods.peace,
-          thoughts,
-          // 释放次数
-          releaseDespair: releaseCounts.despair,
-          releaseSorrow: releaseCounts.sorrow,
-          releaseFear: releaseCounts.fear,
-          releaseGreed: releaseCounts.greed,
-          releaseAnger: releaseCounts.anger,
-          releasePride: releaseCounts.pride,
-          releaseFearless: releaseCounts.fearless,
-          releaseAcceptance: releaseCounts.acceptance,
-          releasePeace: releaseCounts.peace,
-          releaseWantApproval: releaseCounts.wantApproval,
-          releaseWantControl: releaseCounts.wantControl,
-          releaseWantSecurity: releaseCounts.wantSecurity
-        });
-      }, 2000);
+    console.log('自动保存useEffect被触发');
+    console.log('desires:', desires);
+    console.log('moods:', moods);
+    console.log('thoughts:', thoughts);
+    console.log('releaseCounts:', releaseCounts);
+    // 使用本地时间获取日期字符串，避免时区问题
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const date = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${date}`;
+    
+    const saveTimer = setTimeout(() => {
+      console.log('触发保存数据');
+      saveData({
+        date: todayStr,
+        wantApproval: desires.wantApproval,
+        wantControl: desires.wantControl,
+        wantSecurity: desires.wantSecurity,
+        despair: moods.despair,
+        sorrow: moods.sorrow,
+        fear: moods.fear,
+        greed: moods.greed,
+        anger: moods.anger,
+        pride: moods.pride,
+        fearless: moods.fearless,
+        acceptance: moods.acceptance,
+        peace: moods.peace,
+        thoughts,
+        // 释放次数
+        releaseDespair: releaseCounts.despair,
+        releaseSorrow: releaseCounts.sorrow,
+        releaseFear: releaseCounts.fear,
+        releaseGreed: releaseCounts.greed,
+        releaseAnger: releaseCounts.anger,
+        releasePride: releaseCounts.pride,
+        releaseFearless: releaseCounts.fearless,
+        releaseAcceptance: releaseCounts.acceptance,
+        releasePeace: releaseCounts.peace,
+        releaseWantApproval: releaseCounts.wantApproval,
+        releaseWantControl: releaseCounts.wantControl,
+        releaseWantSecurity: releaseCounts.wantSecurity
+      });
+    }, 2000);
 
-      return () => clearTimeout(saveTimer);
-    }
+    return () => clearTimeout(saveTimer);
   }, [desires, moods, thoughts, releaseCounts, saveData]);
 
   // 每天24点归零
-  useEffect(() => {
+    useEffect(() => {
     const checkMidnight = () => {
       const now = new Date();
       const hours = now.getHours();
@@ -398,6 +514,14 @@ const App: React.FC = () => {
     const today = new Date();
     handleDayClick(today);
   }, []);
+
+  // 当切换到统计分析页面时，显示当天的数据
+  useEffect(() => {
+    if (activeTab === 'stats') {
+      const today = new Date();
+      handleDayClick(today);
+    }
+  }, [activeTab]);
 
   // 加载当天数据
   useEffect(() => {
@@ -642,7 +766,7 @@ const App: React.FC = () => {
           data: moodData.map(item => item.value),
           backgroundColor: moodData.map(item => item.color),
           borderColor: moodData.map(item => item.borderColor),
-          borderWidth: 1
+          borderWidth: 0
         }]
       },
       options: {
@@ -698,7 +822,7 @@ const App: React.FC = () => {
           data: desireData.map(item => item.value),
           backgroundColor: desireData.map(item => item.color),
           borderColor: desireData.map(item => item.borderColor),
-          borderWidth: 1
+          borderWidth: 0
         }]
       },
       options: {
@@ -733,6 +857,50 @@ ${value}`;
     URL.revokeObjectURL(url);
   };
 
+  // 导入数据
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const jsonData = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(jsonData)) {
+          alert('导入数据格式错误，请确保选择的是正确的导出文件');
+          return;
+        }
+        
+        // 清空现有数据并导入新数据
+        const db = await initDB();
+        const transaction = db.transaction('emotions', 'readwrite');
+        const store = transaction.objectStore('emotions');
+        
+        // 清空现有数据
+        const clearRequest = store.clear();
+        clearRequest.onsuccess = () => {
+          // 导入新数据
+          jsonData.forEach((item: EmotionData) => {
+            store.put(item);
+          });
+          
+          transaction.oncomplete = () => {
+            alert('数据导入成功');
+            loadData();
+          };
+        };
+        
+        transaction.onerror = () => {
+          alert('数据导入失败');
+        };
+      } catch (error) {
+        alert('导入数据失败，请确保选择的是正确的JSON文件');
+        console.error('导入数据错误:', error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const calendarDays = generateCalendar();
   const moodPieData = generateMoodPieData();
   const desirePieData = generateDesirePieData();
@@ -753,33 +921,45 @@ ${value}`;
     setShowFirstTimeHint(false);
   };
 
+  // 控制页面滚动
+  useEffect(() => {
+    if (activeTab === 'home') {
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100vh';
+    } else {
+      document.body.style.overflow = 'auto';
+      document.body.style.height = 'auto';
+    }
+  }, [activeTab]);
+
   return (
-    <div className="app">
-      <header className="banner">
+    <>
+      {/* <header className="banner">
         <h1 className="banner-title">释放法</h1>
-      </header>
+      </header> */}
 
-      {/* 首次使用提示 */}
-      {showFirstTimeHint && (
-        <div className="first-time-hint-overlay">
-          <div className="first-time-hint-content">
-            <div className="first-time-hint-text">
-              <p>单击按钮记录，长按开启释放。</p>
-              <p>下方数字表示记录次数，</p>
-              <p>上方数字表示释放次数。</p>
+      <div className="app">
+        {/* 首次使用提示 */}
+        {showFirstTimeHint && (
+          <div className="first-time-hint-overlay">
+            <div className="first-time-hint-content">
+              <div className="first-time-hint-text">
+                <p>单击按钮记录，长按开启释放。</p>
+                <p>下方数字表示记录次数，</p>
+                <p>上方数字表示释放次数。</p>
+              </div>
+              <button 
+                className="first-time-hint-button"
+                onClick={handleDontShowAgain}
+              >
+                不再提示
+              </button>
             </div>
-            <button 
-              className="first-time-hint-button"
-              onClick={handleDontShowAgain}
-            >
-              不再提示
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === 'home' && (
-        <div className="record-section">
+        {activeTab === 'home' && (
+          <div className="record-section">
           <div className="section">
             <div className="buttons-container">
               <button 
@@ -866,9 +1046,9 @@ ${value}`;
             </div>
           </div>
           
-          <hr className="divider" />
+          {/* <hr className="divider" /> */}
           
-          <div className="section">
+          <div className="section desires-section">
             <div className="buttons-container">
               <button 
                 className="emotion-button want-approval"
@@ -900,8 +1080,8 @@ ${value}`;
             </div>
           </div>
           
-          <div className="section thoughts-section">
-            <div className="thoughts-section-header">
+          <div className="card thoughts-card">
+            <div className="thoughts-card-header">
               <h3>今日感想</h3>
               {saveStatus && <div className="save-status">{saveStatus}</div>}
             </div>
@@ -918,19 +1098,21 @@ ${value}`;
       )}
 
       {activeTab === 'stats' && (
-        <div className="charts-section">
-          <div className="pie-charts-container">
-            <div className="pie-chart-item">
-              <h3>当月情绪统计</h3>
-              <Pie data={moodPieData.data} options={moodPieData.options} />
-            </div>
-            <div className="pie-chart-item">
-              <h3>当月想要统计</h3>
-              <Pie data={desirePieData.data} options={desirePieData.options} />
+        <>
+          <div className="charts-section">
+            <div className="pie-charts-container">
+              <div className="pie-chart-item">
+                <h3>当月情绪统计</h3>
+                <Pie data={moodPieData.data} options={moodPieData.options} />
+              </div>
+              <div className="pie-chart-item">
+                <h3>当月想要统计</h3>
+                <Pie data={desirePieData.data} options={desirePieData.options} />
+              </div>
             </div>
           </div>
           
-          <div className="stats-content">
+          <div className="day-details">
             <div className="calendar-container">
               <div className="calendar-nav">
                 <button 
@@ -987,7 +1169,7 @@ ${value}`;
             </div>
             
             {selectedDayData && (
-              <div className="day-details">
+              <>
                 <h3>{selectedDayData.date}</h3>
                 <div className="day-buttons">
                   {Object.entries(selectedDayData.moods).map(([key, value]) => {
@@ -1020,12 +1202,16 @@ ${value}`;
                   })}
                 </div>
                 {selectedDayData.thoughts && (
-                  <div className="thoughts-card">
-                    <h4>当日感想</h4>
-                    <p>{selectedDayData.thoughts}</p>
+                  <div className="card thoughts-card">
+                    <div className="thoughts-card-header">
+                      <h3>当日感想</h3>
+                    </div>
+                    <div className="thoughts-content">
+                      <p>{selectedDayData.thoughts}</p>
+                    </div>
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
           
@@ -1033,8 +1219,18 @@ ${value}`;
             <button className="export-button" onClick={exportData}>
               导出数据
             </button>
+            <button className="export-button" onClick={() => document.getElementById('import-input')?.click()}>
+              导入数据
+            </button>
+            <input 
+              type="file" 
+              id="import-input" 
+              accept=".json" 
+              style={{ display: 'none' }} 
+              onChange={handleImportData}
+            />
           </div>
-        </div>
+        </>
       )}
 
       {activeTab === 'help' && (
@@ -1135,71 +1331,96 @@ ${value}`;
         </div>
       )}
 
-      <div className="tabs">
-        <button 
-          className={`tab ${activeTab === 'home' ? 'active' : ''}`}
-          onClick={() => setActiveTab('home')}
-        >
-          记录/释放
-        </button>
-        <button 
-          className={`tab ${activeTab === 'stats' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stats')}
-        >
-          统计分析
-        </button>
-        <button 
-          className={`tab ${activeTab === 'help' ? 'active' : ''}`}
-          onClick={() => setActiveTab('help')}
-        >
-          帮助
-        </button>
-      </div>
+        <div className="tab-bar">
+          <button 
+            className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`}
+            onClick={() => setActiveTab('stats')}
+          >
+            统计
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'home' ? 'active' : ''}`}
+            onClick={() => setActiveTab('home')}
+          >
+            释放
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'help' ? 'active' : ''}`}
+            onClick={() => setActiveTab('help')}
+          >
+            帮助
+          </button>
+        </div>
 
-      {/* 长按模态框 */}
-      {longPressModal.visible && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <button 
-                className={`emotion-button ${longPressModal.key}`}
-                style={{ margin: '0 auto' }}
-              >
-                <div className="emotion-label">{longPressModal.label}</div>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p className="modal-text">
-                {longPressModal.step === 1 ? '你能仅仅是允许自己感受它吗？' : 
-                 longPressModal.step === 2 ? '你愿意释放它吗？' : 
-                 longPressModal.step === 3 ? '什么时候释放？' : 
-                 longPressModal.step === 4 ? '现在，你有感觉好一点或更轻松一点吗？' : '本次释放完成！'}
-              </p>
-            </div>
-            <div className="modal-footer">
-              <button 
-                className="modal-button no-button"
-                onClick={() => handleModalButtonClick('no')}
-              >
-                {longPressModal.step === 1 ? '不能' : 
-                 longPressModal.step === 2 ? '不愿意' : 
-                 longPressModal.step === 3 ? '以后' : 
-                 longPressModal.step === 4 ? '没有' : '结束'}
-              </button>
-              <button 
-                className="modal-button yes-button"
-                onClick={() => handleModalButtonClick('yes')}
-              >
-                {longPressModal.step === 1 ? '能' : 
-                 longPressModal.step === 2 ? '愿意' : 
-                 longPressModal.step === 3 ? '现在' : 
-                 longPressModal.step === 4 ? '有' : '继续释放'}
-              </button>
+        {/* 长按模态框 */}
+        {longPressModal.visible && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <button 
+                  className={`emotion-button ${longPressModal.key.startsWith('want') ? `want-${longPressModal.key.replace('want', '').toLowerCase()}` : longPressModal.key}`}
+                  style={{ margin: '0 auto' }}
+                >
+                  <div className="emotion-label">{longPressModal.label}</div>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p className="modal-text">
+                  {longPressModal.step === 1 ? '你能仅仅是允许自己感受它吗？' : 
+                   longPressModal.step === 2 ? '你愿意释放它吗？' : 
+                   longPressModal.step === 3 ? '什么时候释放？' : 
+                   longPressModal.step === 4 ? '现在你有感觉好一点或轻松一点吗？' : '本次释放完成！'}
+                </p>
+                {longPressModal.step === 5 && (
+                  <div className="fireworks-container">
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    {/* <div className="firework"></div> */}
+                    {/* <div className="firework"></div> */}
+                    {/* <div className="firework"></div> */}
+                    {/* <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div>
+                    <div className="firework"></div> */}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button 
+                  className="modal-button no-button"
+                  onClick={() => handleModalButtonClick('no')}
+                >
+                  {longPressModal.step === 1 ? '不能' : 
+                   longPressModal.step === 2 ? '不愿意' : 
+                   longPressModal.step === 3 ? '以后' : 
+                   longPressModal.step === 4 ? '没有' : '结束'}
+                </button>
+                <button 
+                  className="modal-button yes-button"
+                  onClick={() => handleModalButtonClick('yes')}
+                >
+                  {longPressModal.step === 1 ? '能' : 
+                   longPressModal.step === 2 ? '愿意' : 
+                   longPressModal.step === 3 ? '现在' : 
+                   longPressModal.step === 4 ? '有' : '继续'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 };
 

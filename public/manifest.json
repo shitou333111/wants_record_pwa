@@ -1,19 +1,19 @@
 {
-  "name": "心情记录",
-  "short_name": "心情记录",
-  "description": "记录心情和感悟的PWA应用",
+  "name": "释放法",
+  "short_name": "释放法",
+  "description": "释放法PWA应用",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#fff2dc",
   "theme_color": "#3b82f6",
   "icons": [
     {
-      "src": "pwa-192x192.png",
+      "src": "icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "pwa-512x512.png",
+      "src": "icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
