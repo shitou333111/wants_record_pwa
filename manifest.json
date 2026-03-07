@@ -4,8 +4,8 @@
   "description": "释放法PWA应用",
   "start_url": "/wants_record_pwa/",
   "display": "standalone",
-  "background_color": "#fff2dc",
-  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "icon-192x192.png",
