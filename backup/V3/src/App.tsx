@@ -8,7 +8,6 @@ import {
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import ReleasePage from './ReleasePage';
-import HelpPage from './HelpPage';
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
@@ -185,7 +184,7 @@ const App: React.FC = () => {
       
       transaction.oncomplete = () => {
         console.log('事务完成');
-        setSaveStatus('已保存');
+        setSaveStatus('保存成功');
         setTimeout(() => setSaveStatus(''), 2000);
         loadData();
       };
@@ -415,12 +414,20 @@ const App: React.FC = () => {
 
   // 自动保存
   useEffect(() => {
+    console.log('自动保存useEffect被触发');
+    console.log('desires:', desires);
+    console.log('moods:', moods);
+    console.log('thoughts:', thoughts);
+    console.log('releaseCounts:', releaseCounts);
+    // 使用本地时间获取日期字符串，避免时区问题
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const date = String(today.getDate()).padStart(2, '0');
     const todayStr = `${year}-${month}-${date}`;
+    
     const saveTimer = setTimeout(() => {
+      console.log('触发保存数据');
       saveData({
         date: todayStr,
         wantApproval: desires.wantApproval,
@@ -436,6 +443,7 @@ const App: React.FC = () => {
         acceptance: moods.acceptance,
         peace: moods.peace,
         thoughts,
+        // 释放次数
         releaseDespair: releaseCounts.despair,
         releaseSorrow: releaseCounts.sorrow,
         releaseFear: releaseCounts.fear,
@@ -450,6 +458,7 @@ const App: React.FC = () => {
         releaseWantSecurity: releaseCounts.wantSecurity
       });
     }, 2000);
+
     return () => clearTimeout(saveTimer);
   }, [desires, moods, thoughts, releaseCounts, saveData]);
 
@@ -595,91 +604,6 @@ const App: React.FC = () => {
     }
   }, [emotionData, activeTab]);
 
-  // 计算每天的活动量
-  const calculateActivityLevel = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-    
-    const dayData = emotionData.find(item => item.date === dateStr);
-    if (!dayData) return 0;
-    
-    // 计算总活动量：情绪记录 + 想要记录 + 释放练习次数
-    let totalActivity = 0;
-    
-    // 情绪记录
-    totalActivity += dayData.despair || 0;
-    totalActivity += dayData.sorrow || 0;
-    totalActivity += dayData.fear || 0;
-    totalActivity += dayData.greed || 0;
-    totalActivity += dayData.anger || 0;
-    totalActivity += dayData.pride || 0;
-    totalActivity += dayData.fearless || 0;
-    totalActivity += dayData.acceptance || 0;
-    totalActivity += dayData.peace || 0;
-    
-    // 想要记录
-    totalActivity += dayData.wantApproval || 0;
-    totalActivity += dayData.wantControl || 0;
-    totalActivity += dayData.wantSecurity || 0;
-    
-    // 释放练习次数
-    totalActivity += dayData.releaseDespair || 0;
-    totalActivity += dayData.releaseSorrow || 0;
-    totalActivity += dayData.releaseFear || 0;
-    totalActivity += dayData.releaseGreed || 0;
-    totalActivity += dayData.releaseAnger || 0;
-    totalActivity += dayData.releasePride || 0;
-    totalActivity += dayData.releaseFearless || 0;
-    totalActivity += dayData.releaseAcceptance || 0;
-    totalActivity += dayData.releasePeace || 0;
-    totalActivity += dayData.releaseWantApproval || 0;
-    totalActivity += dayData.releaseWantControl || 0;
-    totalActivity += dayData.releaseWantSecurity || 0;
-    
-    return totalActivity;
-  };
-  
-  // 获取当月的活动量范围
-  const getMonthlyActivityRange = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    let minActivity = Infinity;
-    let maxActivity = 0;
-    
-    // 遍历当月所有日期
-    // const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    
-    for (let i = 1; i <= daysInMonth; i++) {
-      const date = new Date(year, month, i);
-      const activity = calculateActivityLevel(date);
-      
-      if (activity < minActivity) minActivity = activity;
-      if (activity > maxActivity) maxActivity = activity;
-    }
-    
-    return { min: minActivity, max: maxActivity };
-  };
-  
-  // 根据活动量获取颜色深度
-  const getActivityColor = (date: Date) => {
-    const activity = calculateActivityLevel(date);
-    const { min, max } = getMonthlyActivityRange();
-    
-    if (max === min) return 'activity-level-0';
-    
-    const ratio = (activity - min) / (max - min);
-    
-    if (ratio < 0.25) return 'activity-level-1';
-    if (ratio < 0.5) return 'activity-level-2';
-    if (ratio < 0.75) return 'activity-level-3';
-    return 'activity-level-4';
-  };
-  
   // 生成月历数据
   const generateCalendar = () => {
     const year = currentDate.getFullYear();
@@ -977,42 +901,6 @@ ${value}`;
     };
     reader.readAsText(file);
   };
-  
-  // 复制到剪贴板的传统方法，支持移动设备
-  const copyToClipboard = (text: string, element?: EventTarget) => {
-    // 创建一个临时的textarea元素
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    
-    // 设置样式，使其不可见
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
-    document.body.appendChild(textArea);
-    
-    // 聚焦并选择文本
-    textArea.focus();
-    textArea.select();
-    
-    try {
-      // 执行复制命令
-      const successful = document.execCommand('copy');
-      if (successful && element instanceof HTMLButtonElement) {
-        // 显示对号
-        const originalText = element.textContent;
-        element.textContent = '✓';
-        // 0.5秒后恢复
-        setTimeout(() => {
-          element.textContent = originalText;
-        }, 500);
-      }
-    } catch (err) {
-      console.error('复制错误:', err);
-    } finally {
-      // 清理临时元素
-      document.body.removeChild(textArea);
-    }
-  };
 
   const calendarDays = generateCalendar();
   const moodPieData = generateMoodPieData();
@@ -1020,12 +908,38 @@ ${value}`;
 
   const [showFirstTimeHint, setShowFirstTimeHint] = useState(false);
   const [isEditingThoughts, setIsEditingThoughts] = useState(false);
-  // iOS Safari PWA：键盘收起后第一次点击会被系统"幽灵吸收"
-  // 关闭卡片时展示此透明层来吸收那次幽灵点击，随后自动消失
-  const [showPhantomTapAbsorber, setShowPhantomTapAbsorber] = useState(false);
   const thoughtsTextareaRef = React.useRef<HTMLTextAreaElement>(null);
   const scrollPositionRef = React.useRef<{ x: number, y: number }>({ x: 0, y: 0 });
 
+  // 强制清理 iOS Safari 的焦点上下文
+  const forceBlurAllInputs = useCallback(() => {
+    console.log('开始清理焦点，当前 activeElement:', document.activeElement?.tagName);
+    
+    // 方法 1: 让 textarea 失去焦点
+    if (thoughtsTextareaRef.current) {
+      thoughtsTextareaRef.current.blur();
+      console.log('textarea blur 完成');
+    }
+    
+    // 方法 2: 让所有输入元素失去焦点
+    const inputs = document.querySelectorAll('input, textarea, [contenteditable]');
+    inputs.forEach((el) => {
+      if (el instanceof HTMLElement) {
+        el.blur();
+      }
+    });
+    
+    // 方法 3: 将焦点转移到 body（iOS Safari 最有效的方法）
+    document.body.setAttribute('tabindex', '-1');
+    document.body.focus({ preventScroll: true });
+    console.log('焦点转移到 body，当前 activeElement:', document.activeElement?.tagName);
+    
+    // 方法 4: 延迟移除 tabindex
+    setTimeout(() => {
+      document.body.removeAttribute('tabindex');
+      console.log('tabindex 已移除');
+    }, 200);
+  }, []);
 
   // 检查是否首次使用
   useEffect(() => {
@@ -1035,109 +949,93 @@ ${value}`;
     }
   }, []);
 
-  // 触摸事件状态
-  const touchStartX = React.useRef<number>(0);
-  const touchStartY = React.useRef<number>(0);
-  const touchStartTime = React.useRef<number>(0);
-  const touchThreshold = 10; // 滑动阈值
-  const longPressThreshold = 500; // 长按阈值（毫秒）
-  const isLongPress = React.useRef<boolean>(false);
-
-  // iOS Safari 事件顺序：touchstart → focus → click
-  // body 必须在 touchstart 里锁定，否则 focus 触发时键盘已弹出，body 还没锁定
-  const lockBodyForIOS = () => {
-    if (isEditingThoughts) return;
-    scrollPositionRef.current = {
-      x: window.pageXOffset,
-      y: window.pageYOffset
-    };
-    const tabBar = document.querySelector('.tab-bar') as HTMLElement;
-    if (tabBar) tabBar.style.display = 'none';
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollPositionRef.current.y}px`;
-    document.body.style.left = '0';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
-  };
-
-  // 处理输入框触摸开始
-  const handleTextareaTouchStart = (e: React.TouchEvent<HTMLTextAreaElement>) => {
+  // 当进入编辑状态时，确保 textarea 获得焦点并阻止背景滚动
+  useEffect(() => {
     if (isEditingThoughts) {
-      // 编辑状态下完全不干预，让浏览器原生处理（长按选字、复制粘贴等）
-      return;
-    }
-    // 非编辑状态下，阻止文本选择和长按
-    e.preventDefault();
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    touchStartTime.current = Date.now();
-    isLongPress.current = false;
-  };
+      // 记录当前滚动位置
+      scrollPositionRef.current = {
+        x: window.pageXOffset,
+        y: window.pageYOffset
+      };
+      
+      // 隐藏托盘栏
+      const tabBar = document.querySelector('.tab-bar') as HTMLElement;
+      const originalTabBarDisplay = tabBar?.style.display || '';
+      if (tabBar) {
+        tabBar.style.display = 'none';
+      }
+      
+      // 禁止背景页面滚动
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollPositionRef.current.y}px`;
+      document.body.style.left = `-${scrollPositionRef.current.x}px`;
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      
+      // 使用 ref 强制聚焦，确保输入法弹出
+      const focusTextarea = () => {
+        if (thoughtsTextareaRef.current) {
+          thoughtsTextareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          thoughtsTextareaRef.current.focus();
+          
+          if (thoughtsTextareaRef.current) {
+            const originalValue = thoughtsTextareaRef.current.value;
+            thoughtsTextareaRef.current.value = ' ';
+            thoughtsTextareaRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+            setTimeout(() => {
+              if (thoughtsTextareaRef.current) {
+                thoughtsTextareaRef.current.value = originalValue;
+                thoughtsTextareaRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+                const selectionStart = thoughtsTextareaRef.current.selectionStart;
+                thoughtsTextareaRef.current.setSelectionRange(selectionStart, selectionStart);
+              }
+            }, 0);
+          }
+        }
+      };
 
-  // 处理输入框触摸移动
-  const handleTextareaTouchMove = (e: React.TouchEvent<HTMLTextAreaElement>) => {
-    if (!isEditingThoughts) {
-      // 非编辑状态下，阻止文本选择和长按
-      e.preventDefault();
-      return;
+      const timer = setTimeout(focusTextarea, 100);
+      return () => {
+        clearTimeout(timer);
+        // 恢复页面滚动和位置
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        // 恢复滚动位置
+        window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y);
+        if (tabBar) {
+          tabBar.style.display = originalTabBarDisplay;
+        }
+      };
+    } else {
+      // 当退出编辑状态时，立即清理焦点
+      console.log('退出编辑状态，开始清理焦点');
+      
+      // 先清理焦点，再恢复页面状态
+      forceBlurAllInputs();
+      
+      // 使用 setTimeout 确保焦点清理后再恢复页面
+      setTimeout(() => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        // 恢复滚动位置
+        window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y);
+        const tabBar = document.querySelector('.tab-bar') as HTMLElement;
+        if (tabBar) {
+          tabBar.style.display = '';
+        }
+        console.log('页面状态已恢复');
+      }, 100);
     }
-    // 编辑状态下完全不干预：
-    // 长按选文字时手指需要拖动来扩展选区，调用 preventDefault 会阻止这个手势
-  };
-
-  // 处理输入框触摸结束
-  const handleTextareaTouchEnd = (e: React.TouchEvent<HTMLTextAreaElement>) => {
-    if (isEditingThoughts) return;
-    
-    const touchX = e.changedTouches[0].clientX;
-    const touchY = e.changedTouches[0].clientY;
-    const diffX = Math.abs(touchX - touchStartX.current);
-    const diffY = Math.abs(touchY - touchStartY.current);
-    const touchDuration = Date.now() - touchStartTime.current;
-    
-    // 非编辑状态下，无论是否长按，都不允许选择文本
-    if (touchDuration >= longPressThreshold) {
-      isLongPress.current = true;
-      return;
-    }
-    
-    // 如果是点击（没有滑动），则锁定body
-    if (diffX <= touchThreshold && diffY <= touchThreshold) {
-      lockBodyForIOS();
-    }
-  };
-
-  // onClick 负责更新 React 状态（触发重新渲染，添加 editing class）
-  const openThoughtsCard = () => {
-    if (isEditingThoughts || isLongPress.current) return;
-    // 兜底：如果 touchstart 没触发（桌面端），在这里也锁定一次
-    if (document.body.style.position !== 'fixed') {
-      lockBodyForIOS();
-    }
-    setIsEditingThoughts(true);
-  };
-
-  // 关闭感想卡片
-  const closeThoughtsCard = () => {
-    if (!isEditingThoughts) return;
-    if (thoughtsTextareaRef.current) {
-      thoughtsTextareaRef.current.blur();
-    }
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.left = '';
-    document.body.style.width = '';
-    document.body.style.height = '';
-    window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y);
-    const tabBar = document.querySelector('.tab-bar') as HTMLElement;
-    if (tabBar) tabBar.style.display = '';
-    setIsEditingThoughts(false);
-    // 幽灵点击吸收层：吸收iOS键盘收起后的phantom tap
-    setShowPhantomTapAbsorber(true);
-    setTimeout(() => setShowPhantomTapAbsorber(false), 500);
-  };
+  }, [isEditingThoughts, forceBlurAllInputs]);
 
   // 处理不再提示
   const handleDontShowAgain = () => {
@@ -1163,28 +1061,6 @@ ${value}`;
       {/* <header className="banner">
         <h1 className="banner-title">释放法</h1>
       </header> */}
-      
-      {/* iOS Safari PWA 幽灵点击吸收层：
-          键盘收起后系统会产生一次 phantom tap，可能误触页面元素。
-          关闭卡片时短暂展示此全屏透明层，吸收那次幽灵点击后自动消失。*/}
-      {showPhantomTapAbsorber && (
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            left: 0,
-            top: '50%',
-            width: '2px',
-            height: '2px',
-            transform: 'translateY(-50%)',
-            zIndex: 99998,
-            background: 'transparent',
-            touchAction: 'none',
-          }}
-          onClick={() => setShowPhantomTapAbsorber(false)}
-          onTouchEnd={(e) => { e.preventDefault(); setShowPhantomTapAbsorber(false); }}
-        />
-      )}
 
       <div className="app">
         {/* 首次使用提示 */}
@@ -1192,10 +1068,9 @@ ${value}`;
           <div className="first-time-hint-overlay">
             <div className="first-time-hint-content">
               <div className="first-time-hint-text">
-                <p>首次打开网站，需要点击”共享“→”添加到主屏幕“，苹果手机必须使用Safari浏览器。此后就可以在桌面打开应用离线使用，不必再打开浏览器。更多使用帮助请点击&lt;帮助&gt;面板查看</p>
-                {/* <p>单击按钮记录，长按开启释放。</p>
+                <p>单击按钮记录，长按开启释放。</p>
                 <p>下方数字表示记录次数，</p>
-                <p>上方数字表示释放次数。</p> */}
+                <p>上方数字表示释放次数。</p>
               </div>
               <button 
                 className="first-time-hint-button"
@@ -1332,41 +1207,8 @@ ${value}`;
           {/* 感想卡片 */}
           <div className={`card thoughts-card ${isEditingThoughts ? 'editing' : ''}`}>
             <div className="thoughts-card-header">
-              {saveStatus && <div className="save-status">{saveStatus}</div>}
               <h3>今日感想</h3>
-              <div className="copy-button-container">
-                <button 
-                  className="copy-button"
-                  onClick={(event) => {
-                    if (thoughts) {
-                      const button = event.currentTarget as HTMLButtonElement;
-                      const originalText = button.textContent;
-                      
-                      // 尝试使用现代API
-                      if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(thoughts)
-                          .then(() => {
-                            // 显示对号
-                            button.textContent = '✓';
-                            // 0.5秒后恢复
-                            setTimeout(() => {
-                              button.textContent = originalText;
-                            }, 500);
-                          })
-                          .catch(_ => {
-                            // 回退到传统方法
-                            copyToClipboard(thoughts, button);
-                          });
-                      } else {
-                        // 使用传统方法
-                        copyToClipboard(thoughts, button);
-                      }
-                    }
-                  }}
-                >
-                  复制
-                </button>
-              </div>
+              {saveStatus && <div className="save-status">{saveStatus}</div>}
             </div>
             <textarea
               ref={thoughtsTextareaRef}
@@ -1376,11 +1218,7 @@ ${value}`;
               onChange={(e) => {
                 setThoughts(e.target.value);
               }}
-              onTouchStart={handleTextareaTouchStart}
-              onTouchMove={handleTextareaTouchMove}
-              onTouchEnd={handleTextareaTouchEnd}
-              onClick={openThoughtsCard}
-              onContextMenu={(e) => { if (!isEditingThoughts) e.preventDefault(); }}
+              onClick={() => setIsEditingThoughts(true)}
             />
           </div>
           
@@ -1389,14 +1227,16 @@ ${value}`;
             <div 
               className="thoughts-overlay" 
               onClick={(e) => {
+                // 只有点击遮罩本身（而不是卡片）时才收回卡片
                 if (e.target === e.currentTarget) {
-                  closeThoughtsCard();
+                  setIsEditingThoughts(false);
                 }
               }}
               onTouchEnd={(e) => {
+                // 只有点击遮罩本身（而不是卡片）时才收回卡片
                 if (e.target === e.currentTarget) {
                   e.preventDefault();
-                  closeThoughtsCard();
+                  setIsEditingThoughts(false);
                 }
               }}
             ></div>
@@ -1433,7 +1273,7 @@ ${value}`;
                   上一月
                 </button>
                 <div className="current-month">
-                  {selectedDayData ? selectedDayData.date.replace(/-/g, '.') : `${currentDate.getFullYear()}.${String(currentDate.getMonth() + 1).padStart(2, '0')}.${String(currentDate.getDate()).padStart(2, '0')}`}
+                  {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月
                 </div>
                 <button 
                   className="nav-button"
@@ -1462,11 +1302,10 @@ ${value}`;
                 }
                 
                 const isToday = new Date().toDateString() === day.toDateString();
-                const activityColor = getActivityColor(day);
                 return (
                   <div 
                     key={index} 
-                    className={`calendar-day ${isToday ? 'today' : ''} ${activityColor}`}
+                    className={`calendar-day ${isToday ? 'today' : ''}`}
                     onClick={() => handleDayClick(day)}
                   >
                     {day.getDate()}
@@ -1478,6 +1317,7 @@ ${value}`;
             
             {selectedDayData && (
               <>
+                <h3>{selectedDayData.date}</h3>
                 <div className="day-buttons">
                   {Object.entries(selectedDayData.moods).map(([key, value]) => {
                     // 检查释放次数
@@ -1511,38 +1351,7 @@ ${value}`;
                 {selectedDayData.thoughts && (
                   <div className="card thoughts-card">
                     <div className="thoughts-card-header">
-                      <h3>{selectedDayData.date.replace(/-/g, '.')}&emsp;感想</h3>
-                      <div className="copy-button-container">
-                        <button 
-                          className="copy-button"
-                          onClick={(event) => {
-                            const button = event.currentTarget as HTMLButtonElement;
-                            const originalText = button.textContent;
-                            
-                            // 尝试使用现代API
-                            if (navigator.clipboard && window.isSecureContext) {
-                              navigator.clipboard.writeText(selectedDayData.thoughts)
-                                .then(() => {
-                                  // 显示对号
-                                  button.textContent = '✓';
-                                  // 0.5秒后恢复
-                                  setTimeout(() => {
-                                    button.textContent = originalText;
-                                  }, 500);
-                                })
-                                .catch(_ => {
-                                  // 回退到传统方法
-                                  copyToClipboard(selectedDayData.thoughts, button);
-                                });
-                            } else {
-                              // 使用传统方法
-                              copyToClipboard(selectedDayData.thoughts, button);
-                            }
-                          }}
-                        >
-                          复制
-                        </button>
-                      </div>
+                      <h3>当日感想</h3>
                     </div>
                     <div className="thoughts-content">
                       <p>{selectedDayData.thoughts}</p>
@@ -1576,7 +1385,101 @@ ${value}`;
       )}
 
       {activeTab === 'help' && (
-        <HelpPage />
+        <div className="help-section">
+          <div className="card">
+            <h3>风的六步骤</h3>
+            <hr className="step-divider" />
+            <div className="steps-list">
+              <div className="step-item">
+                <div className="step-number">1</div>
+                <div className="step-content">
+                  <p>你必须想要自由超过想要世界。你必须想要自由超过想要被认同和想要控制。想要被认同和想要控制=世界</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">2</div>
+                <div className="step-content">
+                  <p>做出自由的决定。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">3</div>
+                <div className="step-content">
+                  <p>所有感受都来自想要被认同和想要控制，它们都是生存程序。释放它们。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">4</div>
+                <div className="step-content">
+                  <p>持续释放。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">5</div>
+                <div className="step-content">
+                  <p>当你卡住时，释放对卡住的感受的想要改变。</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-number">6</div>
+                <div className="step-content">
+                  <p>每次你释放，你都更愉悦、轻松、脱离限制。随着释放，你会越来越愉悦、轻松、脱离限制。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <h3>其他资料</h3>
+            <hr className="step-divider" />
+            <div className="steps-list">
+              <div className="step-item">
+                <div className="step-content">
+                  <p>B站搜索 "92年原始释放法"</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>B站&lt;哈师傅不是哈师父&gt;，分享释放法相关的视频和直播</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>相关书籍《决定自由》《莱斯特自传》等</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <h3>关于此网站的使用</h3>
+            <hr className="step-divider" />
+            <div className="steps-list">
+              <div className="step-item">
+                <div className="step-content">
+                  <p>首次打开此网站需"添加到主屏幕"，此后就可以离线使用了</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>此网站所有数据都保存在本地浏览器中，清理缓存时须留意。&lt;导出数据&gt;按钮可以备份数据，更换手机时也可以重新导入</p>
+                </div>
+              </div>
+              <hr className="step-divider" />
+              <div className="step-item">
+                <div className="step-content">
+                  <p>苹果手机推荐一个非常好的应用&lt;释放法练习&gt;，就在APP store</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
         <div className="tab-bar">
@@ -1590,7 +1493,7 @@ ${value}`;
             className={`tab-btn ${activeTab === 'home' ? 'active' : ''}`}
             onClick={() => setActiveTab('home')}
           >
-            记录
+            释放
           </button>
           <button 
             className={`tab-btn ${activeTab === 'release' ? 'active' : ''}`}
@@ -1624,7 +1527,7 @@ ${value}`;
                   {longPressModal.step === 1 ? '你能仅仅是允许自己感受它吗？' : 
                    longPressModal.step === 2 ? '你愿意释放它吗？' : 
                    longPressModal.step === 3 ? '什么时候释放？' : 
-                   longPressModal.step === 4 ? '现在你有感觉好一点吗？' : '本次释放完成！'}
+                   longPressModal.step === 4 ? '现在你有感觉好一点或轻松一点吗？' : '本次释放完成！'}
                 </p>
                 {longPressModal.step === 5 && (
                   <div className="fireworks-container">

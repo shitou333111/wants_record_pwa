@@ -1,0 +1,21 @@
+{
+  "name": "圣多纳释放法",
+  "short_name": "释放法",
+  "description": "圣多纳释放法PWA应用，可以记录情绪和释放练习",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff2dc",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
