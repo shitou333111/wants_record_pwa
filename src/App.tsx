@@ -7,6 +7,7 @@ import {
   Legend
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import ReleasePage from './ReleasePage';
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
@@ -41,7 +42,7 @@ interface EmotionData {
 }
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'stats' | 'help'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'stats' | 'help' | 'release'>('home');
   const [desires, setDesires] = useState({
     wantApproval: 0,
     wantControl: 0,
@@ -396,10 +397,10 @@ const App: React.FC = () => {
         e.currentTarget.addEventListener('touchend', () => {
           if (timer) clearTimeout(timer);
         });
-        e.currentTarget.addEventListener('touchmove', (touchEvent) => {
+        e.currentTarget.addEventListener('touchmove', (touchEvent: TouchEvent) => {
           if (!timer) return;
-          const touchX = touchEvent.touches[0].clientX;
-          const touchY = touchEvent.touches[0].clientY;
+          const touchX = (touchEvent as TouchEvent).touches[0].clientX;
+          const touchY = (touchEvent as TouchEvent).touches[0].clientY;
           const diffX = Math.abs(touchX - touchStartX);
           const diffY = Math.abs(touchY - touchStartY);
           if (diffX > threshold || diffY > threshold) {
@@ -906,6 +907,39 @@ ${value}`;
   const desirePieData = generateDesirePieData();
 
   const [showFirstTimeHint, setShowFirstTimeHint] = useState(false);
+  const [isEditingThoughts, setIsEditingThoughts] = useState(false);
+  const thoughtsTextareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const scrollPositionRef = React.useRef<{ x: number, y: number }>({ x: 0, y: 0 });
+
+  // 强制清理 iOS Safari 的焦点上下文
+  const forceBlurAllInputs = useCallback(() => {
+    console.log('开始清理焦点，当前 activeElement:', document.activeElement?.tagName);
+    
+    // 方法 1: 让 textarea 失去焦点
+    if (thoughtsTextareaRef.current) {
+      thoughtsTextareaRef.current.blur();
+      console.log('textarea blur 完成');
+    }
+    
+    // 方法 2: 让所有输入元素失去焦点
+    const inputs = document.querySelectorAll('input, textarea, [contenteditable]');
+    inputs.forEach((el) => {
+      if (el instanceof HTMLElement) {
+        el.blur();
+      }
+    });
+    
+    // 方法 3: 将焦点转移到 body（iOS Safari 最有效的方法）
+    document.body.setAttribute('tabindex', '-1');
+    document.body.focus({ preventScroll: true });
+    console.log('焦点转移到 body，当前 activeElement:', document.activeElement?.tagName);
+    
+    // 方法 4: 延迟移除 tabindex
+    setTimeout(() => {
+      document.body.removeAttribute('tabindex');
+      console.log('tabindex 已移除');
+    }, 200);
+  }, []);
 
   // 检查是否首次使用
   useEffect(() => {
@@ -915,6 +949,94 @@ ${value}`;
     }
   }, []);
 
+  // 当进入编辑状态时，确保 textarea 获得焦点并阻止背景滚动
+  useEffect(() => {
+    if (isEditingThoughts) {
+      // 记录当前滚动位置
+      scrollPositionRef.current = {
+        x: window.pageXOffset,
+        y: window.pageYOffset
+      };
+      
+      // 隐藏托盘栏
+      const tabBar = document.querySelector('.tab-bar') as HTMLElement;
+      const originalTabBarDisplay = tabBar?.style.display || '';
+      if (tabBar) {
+        tabBar.style.display = 'none';
+      }
+      
+      // 禁止背景页面滚动
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollPositionRef.current.y}px`;
+      document.body.style.left = `-${scrollPositionRef.current.x}px`;
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      
+      // 使用 ref 强制聚焦，确保输入法弹出
+      const focusTextarea = () => {
+        if (thoughtsTextareaRef.current) {
+          thoughtsTextareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          thoughtsTextareaRef.current.focus();
+          
+          if (thoughtsTextareaRef.current) {
+            const originalValue = thoughtsTextareaRef.current.value;
+            thoughtsTextareaRef.current.value = ' ';
+            thoughtsTextareaRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+            setTimeout(() => {
+              if (thoughtsTextareaRef.current) {
+                thoughtsTextareaRef.current.value = originalValue;
+                thoughtsTextareaRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+                const selectionStart = thoughtsTextareaRef.current.selectionStart;
+                thoughtsTextareaRef.current.setSelectionRange(selectionStart, selectionStart);
+              }
+            }, 0);
+          }
+        }
+      };
+
+      const timer = setTimeout(focusTextarea, 100);
+      return () => {
+        clearTimeout(timer);
+        // 恢复页面滚动和位置
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        // 恢复滚动位置
+        window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y);
+        if (tabBar) {
+          tabBar.style.display = originalTabBarDisplay;
+        }
+      };
+    } else {
+      // 当退出编辑状态时，立即清理焦点
+      console.log('退出编辑状态，开始清理焦点');
+      
+      // 先清理焦点，再恢复页面状态
+      forceBlurAllInputs();
+      
+      // 使用 setTimeout 确保焦点清理后再恢复页面
+      setTimeout(() => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        // 恢复滚动位置
+        window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y);
+        const tabBar = document.querySelector('.tab-bar') as HTMLElement;
+        if (tabBar) {
+          tabBar.style.display = '';
+        }
+        console.log('页面状态已恢复');
+      }, 100);
+    }
+  }, [isEditingThoughts, forceBlurAllInputs]);
+
   // 处理不再提示
   const handleDontShowAgain = () => {
     localStorage.setItem('hasSeenFirstTimeHint', 'true');
@@ -923,17 +1045,19 @@ ${value}`;
 
   // 控制页面滚动
   useEffect(() => {
-    if (activeTab === 'home') {
+    // 只有在非编辑状态且当前是首页时才禁止滚动
+    if (activeTab === 'home' && !isEditingThoughts) {
       document.body.style.overflow = 'hidden';
       document.body.style.height = '100vh';
-    } else {
+    } else if (!isEditingThoughts) {
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
     }
-  }, [activeTab]);
+    // 编辑状态下的滚动控制在另一个useEffect中处理
+  }, [activeTab, isEditingThoughts]);
 
   return (
-    <>
+    <div className={isEditingThoughts ? 'app-editing' : ''}>
       {/* <header className="banner">
         <h1 className="banner-title">释放法</h1>
       </header> */}
@@ -1080,20 +1204,43 @@ ${value}`;
             </div>
           </div>
           
-          <div className="card thoughts-card">
+          {/* 感想卡片 */}
+          <div className={`card thoughts-card ${isEditingThoughts ? 'editing' : ''}`}>
             <div className="thoughts-card-header">
               <h3>今日感想</h3>
               {saveStatus && <div className="save-status">{saveStatus}</div>}
             </div>
             <textarea
+              ref={thoughtsTextareaRef}
               className="thoughts-textarea"
               placeholder="记录你的感想..."
               value={thoughts}
               onChange={(e) => {
                 setThoughts(e.target.value);
               }}
+              onClick={() => setIsEditingThoughts(true)}
             />
           </div>
+          
+          {/* 背景遮罩层 */}
+          {isEditingThoughts && (
+            <div 
+              className="thoughts-overlay" 
+              onClick={(e) => {
+                // 只有点击遮罩本身（而不是卡片）时才收回卡片
+                if (e.target === e.currentTarget) {
+                  setIsEditingThoughts(false);
+                }
+              }}
+              onTouchEnd={(e) => {
+                // 只有点击遮罩本身（而不是卡片）时才收回卡片
+                if (e.target === e.currentTarget) {
+                  e.preventDefault();
+                  setIsEditingThoughts(false);
+                }
+              }}
+            ></div>
+          )}
         </div>
       )}
 
@@ -1233,6 +1380,10 @@ ${value}`;
         </>
       )}
 
+      {activeTab === 'release' && (
+        <ReleasePage />
+      )}
+
       {activeTab === 'help' && (
         <div className="help-section">
           <div className="card">
@@ -1345,6 +1496,13 @@ ${value}`;
             释放
           </button>
           <button 
+            className={`tab-btn ${activeTab === 'release' ? 'active' : ''}`}
+            onClick={() => setActiveTab('release')}
+            title="立即释放"
+          >
+            ⚡
+          </button>
+          <button 
             className={`tab-btn ${activeTab === 'help' ? 'active' : ''}`}
             onClick={() => setActiveTab('help')}
           >
@@ -1420,7 +1578,7 @@ ${value}`;
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 };
 

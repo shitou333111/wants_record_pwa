@@ -6,7 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     host: '0.0.0.0', // 关键配置：监听所有网络接口
-    port: 5173,       // 你的端口
+    port: 5173,       // 固定端口5173
+    strictPort: true, // 如果端口被占用，不自动尝试其他端口
   },
   plugins: [
     react(),
