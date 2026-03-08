@@ -1,17 +1,20 @@
 {
-  "name": "wants-record-pwa",
+  "name": "wants_record_pwa",
+  "homepage": "https://shitou333111.github.io/wants_record_pwa",
   "private": true,
-  "version": "2.0.0",
+  "version": "4.0.0-dev",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "chart.js": "^4.4.0",
     "chartjs-plugin-datalabels": "^2.2.0",
+    "pwa-asset-generator": "^8.1.2",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0"
@@ -28,6 +31,7 @@
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "gh-pages": "^6.3.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.2.2",

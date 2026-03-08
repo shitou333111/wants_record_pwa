@@ -127,7 +127,7 @@ const HelpPage: React.FC = () => {
         <div className="steps-list">
           <div className="step-item">
             <div className="step-content">
-              <p><strong>Bug修复</strong>：&lt;记录&gt;面板中的感悟卡片，点击输入有时弹起的位置不对，暂时的解决方法：收起卡片后，额外点击页面中空白区域一次，再次点击输入框就会正常弹起。<br/>输入框长按无法选中文字进行复制粘贴操作。</p>
+              <p><strong>Bug修复</strong>：苹果手机，&lt;记录&gt;面板中的感悟卡片，点击输入有时弹起的位置不对，暂时的解决方法：收起卡片后，额外点击页面中空白区域一次，再次点击输入框就会正常弹起。<br/>输入框长按无法选中文字进行复制粘贴操作。</p>
             </div>
           </div>
           <hr className="step-divider" />

@@ -161,40 +161,41 @@ const App: React.FC = () => {
   }, [initDB]);
 
   // 保存数据
-  const saveData = useCallback(async (data: EmotionData) => {
-    console.log('开始保存数据:', data);
+  const saveData = useCallback(async (data: EmotionData, source: string = 'unknown') => {
+    console.log(`[${new Date().toLocaleTimeString()}] 开始保存数据 (来源: ${source}):`, data);
     try {
       const db = await initDB();
-      console.log('数据库初始化成功:', db);
+      console.log(`[${new Date().toLocaleTimeString()}] 数据库初始化成功:`, db);
       const transaction = db.transaction('emotions', 'readwrite');
-      console.log('事务创建成功:', transaction);
+      console.log(`[${new Date().toLocaleTimeString()}] 事务创建成功:`, transaction);
       const store = transaction.objectStore('emotions');
-      console.log('对象存储创建成功:', store);
+      console.log(`[${new Date().toLocaleTimeString()}] 对象存储创建成功:`, store);
       
       // 直接保存或更新数据
       const request = store.put(data);
-      console.log('保存请求发送:', request);
+      console.log(`[${new Date().toLocaleTimeString()}] 保存请求发送:`, request);
       
       request.onsuccess = () => {
-        console.log('保存成功');
+        console.log(`[${new Date().toLocaleTimeString()}] 保存成功`);
       };
       
       request.onerror = (event) => {
-        console.error('保存请求失败:', event);
+        console.error(`[${new Date().toLocaleTimeString()}] 保存请求失败:`, event);
       };
       
       transaction.oncomplete = () => {
-        console.log('事务完成');
+        console.log(`[${new Date().toLocaleTimeString()}] 事务完成`);
         setSaveStatus('已保存');
         setTimeout(() => setSaveStatus(''), 2000);
+        // 保存成功后重新加载数据，确保状态同步
         loadData();
       };
       
       transaction.onerror = (event) => {
-        console.error('事务失败:', event);
+        console.error(`[${new Date().toLocaleTimeString()}] 事务失败:`, event);
       };
     } catch (error) {
-      console.error('保存数据失败:', error);
+      console.error(`[${new Date().toLocaleTimeString()}] 保存数据失败:`, error);
       setSaveStatus('保存失败');
       setTimeout(() => setSaveStatus(''), 2000);
     }
@@ -248,7 +249,8 @@ const App: React.FC = () => {
         releaseWantApproval: releaseCounts.wantApproval,
         releaseWantControl: releaseCounts.wantControl,
         releaseWantSecurity: releaseCounts.wantSecurity
-      });
+      }, 'handleDesireClick');
+
       
       return newDesires;
     });
@@ -297,7 +299,8 @@ const App: React.FC = () => {
         releaseWantApproval: releaseCounts.wantApproval,
         releaseWantControl: releaseCounts.wantControl,
         releaseWantSecurity: releaseCounts.wantSecurity
-      });
+      }, 'handleMoodClick');
+
       
       return newMoods;
     });
@@ -355,18 +358,54 @@ const App: React.FC = () => {
           };
         } else {
           // 点击"结束"，关闭模态框
+          // 立即保存数据
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const date = String(today.getDate()).padStart(2, '0');
+          const todayStr = `${year}-${month}-${date}`;
+          
+          saveData({
+            date: todayStr,
+            wantApproval: desires.wantApproval,
+            wantControl: desires.wantControl,
+            wantSecurity: desires.wantSecurity,
+            despair: moods.despair,
+            sorrow: moods.sorrow,
+            fear: moods.fear,
+            greed: moods.greed,
+            anger: moods.anger,
+            pride: moods.pride,
+            fearless: moods.fearless,
+            acceptance: moods.acceptance,
+            peace: moods.peace,
+            thoughts,
+            releaseDespair: releaseCounts.despair,
+            releaseSorrow: releaseCounts.sorrow,
+            releaseFear: releaseCounts.fear,
+            releaseGreed: releaseCounts.greed,
+            releaseAnger: releaseCounts.anger,
+            releasePride: releaseCounts.pride,
+            releaseFearless: releaseCounts.fearless,
+            releaseAcceptance: releaseCounts.acceptance,
+            releasePeace: releaseCounts.peace,
+            releaseWantApproval: releaseCounts.wantApproval,
+            releaseWantControl: releaseCounts.wantControl,
+            releaseWantSecurity: releaseCounts.wantSecurity
+          }, 'handleModalButtonClick');
+
+          
           return {
             ...prev,
             visible: false
           };
         }
-      } else {
-        // 其他情况关闭模态框
-        return {
-          ...prev,
-          visible: false
-        };
       }
+      // 其他情况关闭模态框，不需要重复保存
+      return {
+        ...prev,
+        visible: false
+      };
     });
   };
 
@@ -413,8 +452,11 @@ const App: React.FC = () => {
     };
   };
 
-  // 自动保存
+  // 自动保存 - 仅针对今日感想输入
   useEffect(() => {
+    // 只有当thoughts有实际内容时才触发自动保存
+    if (!thoughts) return;
+    
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -448,10 +490,11 @@ const App: React.FC = () => {
         releaseWantApproval: releaseCounts.wantApproval,
         releaseWantControl: releaseCounts.wantControl,
         releaseWantSecurity: releaseCounts.wantSecurity
-      });
+      }, 'autoSave');
+
     }, 2000);
     return () => clearTimeout(saveTimer);
-  }, [desires, moods, thoughts, releaseCounts, saveData]);
+  }, [thoughts]);
 
   // 每天24点归零
     useEffect(() => {
@@ -1147,14 +1190,45 @@ ${value}`;
 
   // 控制页面滚动
   useEffect(() => {
+    // 阻止触摸滚动的函数
+    const preventScroll = (e: TouchEvent) => {
+      if (activeTab === 'home' && !isEditingThoughts) {
+        e.preventDefault();
+      }
+    };
+
     // 只有在非编辑状态且当前是首页时才禁止滚动
     if (activeTab === 'home' && !isEditingThoughts) {
+      // 更严格的滚动禁止措施，确保在iOS PWA中也能生效
+      // 使用overflow: hidden和height: 100vh来禁止滚动，同时保持position: relative
       document.body.style.overflow = 'hidden';
       document.body.style.height = '100vh';
+      document.body.style.width = '100%';
+      document.body.style.position = 'relative';
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100vh';
+      
+      // 添加触摸事件监听器来阻止滚动
+      document.addEventListener('touchmove', preventScroll, { passive: false });
     } else if (!isEditingThoughts) {
+      // 恢复正常滚动
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.overflow = 'auto';
+      document.documentElement.style.height = 'auto';
+      
+      // 移除触摸事件监听器
+      document.removeEventListener('touchmove', preventScroll);
     }
+    
+    // 清理函数
+    return () => {
+      document.removeEventListener('touchmove', preventScroll);
+    };
     // 编辑状态下的滚动控制在另一个useEffect中处理
   }, [activeTab, isEditingThoughts]);
 
@@ -1192,7 +1266,7 @@ ${value}`;
           <div className="first-time-hint-overlay">
             <div className="first-time-hint-content">
               <div className="first-time-hint-text">
-                <p>首次打开网站，需要点击”共享“→”添加到主屏幕“，苹果手机必须使用Safari浏览器。此后就可以在桌面打开应用离线使用，不必再打开浏览器。更多使用帮助请点击&lt;帮助&gt;面板查看</p>
+                <p>首次打开网站，需要点击”共享“→”添加到主屏幕“，苹果手机必须使用<strong>Safari浏览器</strong>，安卓手机”安装应用“或直接有提示。此后就可以在桌面打开应用离线使用，不必再打开浏览器。更多使用帮助请点击&lt;帮助&gt;面板查看</p>
                 {/* <p>单击按钮记录，长按开启释放。</p>
                 <p>下方数字表示记录次数，</p>
                 <p>上方数字表示释放次数。</p> */}
