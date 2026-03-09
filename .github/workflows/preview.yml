@@ -1,6 +1,8 @@
 name: Deploy Preview
 
 on:
+  push:
+    branches: [ main ]  # 只要 push 到 main 就触发
   pull_request:
     branches: [ main ]
 
@@ -30,6 +32,6 @@ jobs:
         with:
           branch: gh-pages
           folder: dist
-          target-folder: previews/pr-${{ github.event.number }}
+          target-folder: ${{ github.event_name == 'pull_request' && format('previews/pr-{0}', github.event.number) || 'previews/latest' }}
           clean: false
           commit-message: 'Deploy preview for PR #${{ github.event.number }}'
