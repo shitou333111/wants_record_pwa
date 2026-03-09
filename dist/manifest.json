@@ -2,7 +2,7 @@
   "name": "释放法",
   "short_name": "释放法",
   "description": "释放法PWA应用",
-  "start_url": "/wants_record_pwa/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#F9FAFB",
   "theme_color": "#F9FAFB",

@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/wants_record_pwa/',
+  base: process.env.BASE_URL || '/wants_record_pwa/',
   server: {
     host: '0.0.0.0', // 关键配置：监听所有网络接口
     port: 5173,       // 固定端口5173

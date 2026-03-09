@@ -97,8 +97,7 @@ const HelpPage: React.FC = () => {
           <hr className="step-divider" />
           <div className="step-item">
             <div className="step-content">
-              <p><strong>&lt;记录&gt;</strong>面板记录日常的情绪和释放，点击会记录下当前的情绪和想要，次数+1；长按会启动释放练习，按钮中上方数字代表记录次数，下方数字代表释放次数。”今日感想“可以记录当天发生的事情和心理，输入会自动保存。次数和感悟每日0点归零，查看过去的记录请到&lt;统计面板&gt;</p>
-            </div>
+              <p><strong>&lt;记录&gt;</strong>面板记录日常的情绪和释放，点击会记录下当前的情绪和想要，次数+1；长按会启动释放练习，按钮中上方数字代表记录次数，下方数字代表释放次数。“今日感想”可以记录当天发生的事情和心理，输入会自动保存。次数和感悟每日0点归零，查看过去的记录请到&lt;统计&gt;面板</p>           </div>
           </div>
           <hr className="step-divider" />
           <div className="step-item">
@@ -127,7 +126,7 @@ const HelpPage: React.FC = () => {
         <div className="steps-list">
           <div className="step-item">
             <div className="step-content">
-              <p><strong>Bug修复</strong>：苹果手机，&lt;记录&gt;面板中的感悟卡片，点击输入有时弹起的位置不对，暂时的解决方法：收起卡片后，额外点击页面中空白区域一次，再次点击输入框就会正常弹起。<br/>输入框长按无法选中文字进行复制粘贴操作。</p>
+              <p><strong>Bug修复</strong>：苹果手机，&lt;记录&gt;面板中的感悟卡片，点击输入有时弹起的位置不对，暂时的解决方法：点击输入法面板右上角的收起按钮√，收起卡片后，再点击输入框。<br/>输入框长按无法选中文字进行复制粘贴操作。</p>
             </div>
           </div>
           <hr className="step-divider" />

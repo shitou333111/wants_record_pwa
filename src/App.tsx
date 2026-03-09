@@ -9,6 +9,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import ReleasePage from './ReleasePage';
 import HelpPage from './HelpPage';
+import NoteEditor from './NoteEditor';
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
@@ -79,7 +80,7 @@ const App: React.FC = () => {
     wantSecurity: 0
   });
   const [thoughts, setThoughts] = useState('');
-  const [saveStatus, setSaveStatus] = useState('');
+  const [, setSaveStatus] = useState('');
   const [emotionData, setEmotionData] = useState<EmotionData[]>([]);
   const [selectedDayData, setSelectedDayData] = useState<{
     date: string;
@@ -1062,12 +1063,7 @@ ${value}`;
   const desirePieData = generateDesirePieData();
 
   const [showFirstTimeHint, setShowFirstTimeHint] = useState(false);
-  const [isEditingThoughts, setIsEditingThoughts] = useState(false);
-  // iOS Safari PWA：键盘收起后第一次点击会被系统"幽灵吸收"
-  // 关闭卡片时展示此透明层来吸收那次幽灵点击，随后自动消失
-  const [showPhantomTapAbsorber, setShowPhantomTapAbsorber] = useState(false);
-  const thoughtsTextareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const scrollPositionRef = React.useRef<{ x: number, y: number }>({ x: 0, y: 0 });
+  const [showEditPage, setShowEditPage] = useState(false);
 
 
   // 检查是否首次使用
@@ -1078,129 +1074,39 @@ ${value}`;
     }
   }, []);
 
-  // 触摸事件状态
-  const touchStartX = React.useRef<number>(0);
-  const touchStartY = React.useRef<number>(0);
-  const touchStartTime = React.useRef<number>(0);
-  const touchThreshold = 10; // 滑动阈值
-  const longPressThreshold = 500; // 长按阈值（毫秒）
-  const isLongPress = React.useRef<boolean>(false);
-
-  // iOS Safari 事件顺序：touchstart → focus → click
-  // body 必须在 touchstart 里锁定，否则 focus 触发时键盘已弹出，body 还没锁定
-  const lockBodyForIOS = () => {
-    if (isEditingThoughts) return;
-    scrollPositionRef.current = {
-      x: window.pageXOffset,
-      y: window.pageYOffset
-    };
-    const tabBar = document.querySelector('.tab-bar') as HTMLElement;
-    if (tabBar) tabBar.style.display = 'none';
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollPositionRef.current.y}px`;
-    document.body.style.left = '0';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
-  };
-
-  // 处理输入框触摸开始
-  const handleTextareaTouchStart = (e: React.TouchEvent<HTMLTextAreaElement>) => {
-    if (isEditingThoughts) {
-      // 编辑状态下完全不干预，让浏览器原生处理（长按选字、复制粘贴等）
-      return;
-    }
-    // 非编辑状态下，阻止文本选择和长按
-    e.preventDefault();
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    touchStartTime.current = Date.now();
-    isLongPress.current = false;
-  };
-
-  // 处理输入框触摸移动
-  const handleTextareaTouchMove = (e: React.TouchEvent<HTMLTextAreaElement>) => {
-    if (!isEditingThoughts) {
-      // 非编辑状态下，阻止文本选择和长按
-      e.preventDefault();
-      return;
-    }
-    // 编辑状态下完全不干预：
-    // 长按选文字时手指需要拖动来扩展选区，调用 preventDefault 会阻止这个手势
-  };
-
-  // 处理输入框触摸结束
-  const handleTextareaTouchEnd = (e: React.TouchEvent<HTMLTextAreaElement>) => {
-    if (isEditingThoughts) return;
-    
-    const touchX = e.changedTouches[0].clientX;
-    const touchY = e.changedTouches[0].clientY;
-    const diffX = Math.abs(touchX - touchStartX.current);
-    const diffY = Math.abs(touchY - touchStartY.current);
-    const touchDuration = Date.now() - touchStartTime.current;
-    
-    // 非编辑状态下，无论是否长按，都不允许选择文本
-    if (touchDuration >= longPressThreshold) {
-      isLongPress.current = true;
-      return;
-    }
-    
-    // 如果是点击（没有滑动），则锁定body
-    if (diffX <= touchThreshold && diffY <= touchThreshold) {
-      lockBodyForIOS();
-    }
-  };
-
-  // onClick 负责更新 React 状态（触发重新渲染，添加 editing class）
-  const openThoughtsCard = () => {
-    if (isEditingThoughts || isLongPress.current) return;
-    // 兜底：如果 touchstart 没触发（桌面端），在这里也锁定一次
-    if (document.body.style.position !== 'fixed') {
-      lockBodyForIOS();
-    }
-    setIsEditingThoughts(true);
-  };
-
-  // 关闭感想卡片
-  const closeThoughtsCard = () => {
-    if (!isEditingThoughts) return;
-    if (thoughtsTextareaRef.current) {
-      thoughtsTextareaRef.current.blur();
-    }
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.left = '';
-    document.body.style.width = '';
-    document.body.style.height = '';
-    window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y);
-    const tabBar = document.querySelector('.tab-bar') as HTMLElement;
-    if (tabBar) tabBar.style.display = '';
-    setIsEditingThoughts(false);
-    // 幽灵点击吸收层：吸收iOS键盘收起后的phantom tap
-    setShowPhantomTapAbsorber(true);
-    setTimeout(() => setShowPhantomTapAbsorber(false), 500);
-  };
-
   // 处理不再提示
   const handleDontShowAgain = () => {
     localStorage.setItem('hasSeenFirstTimeHint', 'true');
     setShowFirstTimeHint(false);
   };
 
+  // 打开编辑页面
+  const openEditPage = () => {
+    setShowEditPage(true);
+  };
+
+  // 关闭编辑页面
+  const closeEditPage = () => {
+    setShowEditPage(false);
+  };
+
+  // 保存编辑内容
+  const handleSaveEdit = (updatedThoughts: string) => {
+    setThoughts(updatedThoughts);
+  };
+
   // 控制页面滚动
   useEffect(() => {
     // 阻止触摸滚动的函数
     const preventScroll = (e: TouchEvent) => {
-      if (activeTab === 'home' && !isEditingThoughts) {
+      if (activeTab === 'home' && !showEditPage) {
         e.preventDefault();
       }
     };
 
-    // 只有在非编辑状态且当前是首页时才禁止滚动
-    if (activeTab === 'home' && !isEditingThoughts) {
+    // 只有在非编辑页面且当前是首页时才禁止滚动
+    if (activeTab === 'home' && !showEditPage) {
       // 更严格的滚动禁止措施，确保在iOS PWA中也能生效
-      // 使用overflow: hidden和height: 100vh来禁止滚动，同时保持position: relative
       document.body.style.overflow = 'hidden';
       document.body.style.height = '100vh';
       document.body.style.width = '100%';
@@ -1211,7 +1117,7 @@ ${value}`;
       
       // 添加触摸事件监听器来阻止滚动
       document.addEventListener('touchmove', preventScroll, { passive: false });
-    } else if (!isEditingThoughts) {
+    } else {
       // 恢复正常滚动
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
@@ -1229,36 +1135,13 @@ ${value}`;
     return () => {
       document.removeEventListener('touchmove', preventScroll);
     };
-    // 编辑状态下的滚动控制在另一个useEffect中处理
-  }, [activeTab, isEditingThoughts]);
+  }, [activeTab, showEditPage]);
 
   return (
-    <div className={isEditingThoughts ? 'app-editing' : ''}>
+    <div>
       {/* <header className="banner">
         <h1 className="banner-title">释放法</h1>
       </header> */}
-      
-      {/* iOS Safari PWA 幽灵点击吸收层：
-          键盘收起后系统会产生一次 phantom tap，可能误触页面元素。
-          关闭卡片时短暂展示此全屏透明层，吸收那次幽灵点击后自动消失。*/}
-      {showPhantomTapAbsorber && (
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            left: 0,
-            top: '50%',
-            width: '2px',
-            height: '2px',
-            transform: 'translateY(-50%)',
-            zIndex: 99998,
-            background: 'transparent',
-            touchAction: 'none',
-          }}
-          onClick={() => setShowPhantomTapAbsorber(false)}
-          onTouchEnd={(e) => { e.preventDefault(); setShowPhantomTapAbsorber(false); }}
-        />
-      )}
 
       <div className="app">
         {/* 首次使用提示 */}
@@ -1404,9 +1287,8 @@ ${value}`;
           </div>
           
           {/* 感想卡片 */}
-          <div className={`card thoughts-card ${isEditingThoughts ? 'editing' : ''}`}>
+          <div className="card thoughts-card">
             <div className="thoughts-card-header">
-              {saveStatus && <div className="save-status">{saveStatus}</div>}
               <h3>今日感想</h3>
               <div className="copy-button-container">
                 <button 
@@ -1442,39 +1324,10 @@ ${value}`;
                 </button>
               </div>
             </div>
-            <textarea
-              ref={thoughtsTextareaRef}
-              className="thoughts-textarea"
-              placeholder="记录你的感想..."
-              value={thoughts}
-              onChange={(e) => {
-                setThoughts(e.target.value);
-              }}
-              onTouchStart={handleTextareaTouchStart}
-              onTouchMove={handleTextareaTouchMove}
-              onTouchEnd={handleTextareaTouchEnd}
-              onClick={openThoughtsCard}
-              onContextMenu={(e) => { if (!isEditingThoughts) e.preventDefault(); }}
-            />
+            <div className="thoughts-content" onClick={openEditPage}>
+              {thoughts || '点击记录你的感想...'}
+            </div>
           </div>
-          
-          {/* 背景遮罩层 */}
-          {isEditingThoughts && (
-            <div 
-              className="thoughts-overlay" 
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  closeThoughtsCard();
-                }
-              }}
-              onTouchEnd={(e) => {
-                if (e.target === e.currentTarget) {
-                  e.preventDefault();
-                  closeThoughtsCard();
-                }
-              }}
-            ></div>
-          )}
         </div>
       )}
 
@@ -1747,6 +1600,15 @@ ${value}`;
               </div>
             </div>
           </div>
+        )}
+
+        {/* 编辑页面 */}
+        {showEditPage && (
+          <NoteEditor 
+            onFinish={closeEditPage} 
+            thoughts={thoughts}
+            onSave={handleSaveEdit}
+          />
         )}
       </div>
     </div>
