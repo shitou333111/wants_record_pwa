@@ -2992,6 +2992,9 @@ html[data-theme="dark"] .ec-content {
 html[data-theme="dark"] .ec-sub-title {
   color: rgba(235,235,245,0.5);
 }
+html[data-theme="dark"] .ec-chip {
+  color: rgba(235,235,245,0.9);
+}
 /* First-time hint */
 html[data-theme="dark"] .first-time-hint-content {
   background: rgba(44,44,46,0.97);
@@ -3189,6 +3192,7 @@ html[data-theme="dark"] .modal-button:active {
   }
   html:not([data-theme="light"]) .ec-content { color: #f2f2f7; }
   html:not([data-theme="light"]) .ec-sub-title { color: rgba(235,235,245,0.5); }
+  html:not([data-theme="light"]) .ec-chip { color: rgba(235,235,245,0.9); }
   html:not([data-theme="light"]) .first-time-hint-content { background: rgba(44,44,46,0.97); }
   html:not([data-theme="light"]) .first-time-hint-title { color: #f2f2f7; }
   html:not([data-theme="light"]) .first-time-hint-text { color: rgba(235,235,245,0.8); }
