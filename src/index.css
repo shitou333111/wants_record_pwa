@@ -17,6 +17,10 @@ html.home-scroll-lock,
 body.home-scroll-lock {
   overflow: hidden;
   overscroll-behavior: none;
+  height: 100dvh;
+  /* iOS PWA: position:fixed is the reliable way to prevent rubber-band scroll */
+  position: fixed;
+  width: 100%;
 }
 
 :root {
@@ -113,7 +117,6 @@ body {
 /* 记录区域 */
 .record-section {
   padding: 0rem 0 0;
-  padding-bottom: calc(172px + env(safe-area-inset-bottom));
   margin-bottom: 0px;
   display: flex;
   flex-direction: column;
@@ -125,17 +128,9 @@ body {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
-  height: calc(100dvh - env(safe-area-inset-top));
+  height: calc(100dvh - env(safe-area-inset-top) - 90px);
 }
 
-/* 首页非编辑状态：textarea 文字不可选中，长按无系统菜单 */
-.record-section .thoughts-textarea {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -webkit-touch-callout: none;
-}
 
 /* 区块 */
 .section {
@@ -265,11 +260,6 @@ body {
   -ms-user-select: none;
 }
 
-/* 统计分析页面的按钮禁止点击效果 */
-.day-buttons .emotion-button {
-  cursor: default;
-  pointer-events: none;
-}
 
 /* 按钮颜色 */
 .emotion-button.want-approval {
@@ -379,89 +369,6 @@ body {
   /* min-height: 200px; */
 }
 
-/* 编辑时卡片弹出到顶部 */
-.card.thoughts-card.editing {
-  position: fixed;
-  top: calc(20px + env(safe-area-inset-top));
-  left: 0;
-  right: 0;
-  margin: 0 auto; 
-  width: 98%;
-  max-width: 100%;
-  /* min-height: 40%; */
-  z-index: 10000;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  animation: popUp 0.3s ease-out;
-}
-
-@keyframes popUp {
-  from {
-    opacity: 0;
-    transform: translateY(100px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 背景遮罩层 */
-.thoughts-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  z-index: 9999;
-  animation: fadeIn 0.3s ease-out;
-  touch-action: none;
-  pointer-events: auto;
-  -webkit-tap-highlight-color: transparent;
-  /* 确保遮罩层覆盖所有内容 */
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* 编辑状态下禁用背景交互 */
-.app-editing {
-  /* 完全禁用背景页面的所有事件 */
-  position: relative;
-}
-
-.app-editing .app {
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 确保卡片和遮罩层仍可交互 */
-.app-editing .thoughts-overlay {
-  pointer-events: auto;
-  touch-action: auto;
-  user-select: auto;
-  -webkit-user-select: auto;
-  -moz-user-select: auto;
-  -ms-user-select: auto;
-  /* 确保遮罩层覆盖所有内容 */
-  z-index: 9999;
-}
-
-.app-editing .card.thoughts-card {
-  pointer-events: auto;
-  touch-action: auto;
-  user-select: auto;
-  -webkit-user-select: auto;
-  -moz-user-select: auto;
-  -ms-user-select: auto;
-  /* 确保卡片在遮罩层之上 */
-  z-index: 10000;
-}
 
 /* 感想卡片样式调整 */
 .thoughts-card {
@@ -491,26 +398,6 @@ body {
   color: #8e8e93;
 }
 
-/* 编辑状态下 textarea 可正常选中文字，iOS 长按可呼出复制/粘贴菜单 */
-.app-editing .thoughts-textarea {
-  pointer-events: auto;
-  touch-action: auto;
-  user-select: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  -webkit-touch-callout: default;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .card.thoughts-card:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
@@ -528,153 +415,6 @@ body {
   justify-content: space-between;
   align-items: center;
   position: relative;
-}
-
-.thoughts-card-header h3 {
-  flex: 1;
-  margin: 0;
-  padding: 0;
-  color: var(--text-color);
-  font-size: 1.1rem;
-  text-align: center;
-}
-
-/* .save-status {
-  font-size: 0.8rem;
-  color: #666;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
-  flex-shrink: 0;
-} */
-
-.copy-button-container {
-  position: relative;
-  display: inline-block;
-}
-
-.copy-button {
-  padding: 0.25rem 0.75rem;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow);
-  min-width: 60px;
-  text-align: center;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.copy-button:hover {
-  background-color: #2563eb;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.copy-button:active {
-  transform: scale(0.95);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.thoughts-card-header h3 {
-  margin: 0;
-  padding: 0;
-  color: var(--text-color);
-  font-size: 1.1rem;
-  font-weight: 600;
-  text-align: center;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.copy-button-container {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.copy-button {
-  padding: 0.25rem 0.75rem;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow);
-  min-width: 50px;
-  text-align: center;
-}
-
-.copy-button:hover {
-  background-color: #2563eb;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.copy-button:active {
-  transform: scale(0.95);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.thoughts-card h3 {
-  margin: 0;
-  padding: 0;
-  color: var(--text-color);
-  font-size: 1.1rem;
-  font-weight: 600;
-  text-align: center;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-/* .save-status {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  margin: 0;
-  padding: 0.2rem 0.75rem;
-  font-size: 0.875rem;
-  color: var(--secondary-color);
-  background-color: rgba(16, 185, 129, 0.1);
-  border-radius: 12px;
-  font-weight: 500;
-} */
-
-.thoughts-textarea {
-  width: 100%;
-  min-height: 180px;
-  padding: 0.5rem;
-  border: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  font-size: 1rem;
-  resize: vertical;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.6;
-  outline: none;
-  overflow-y: auto;
-  margin: 0;
-  box-sizing: border-box;
-  background-color: #fefefe;
-  transition: all 0.3s ease;
-}
-
-.thoughts-textarea:focus {
-  background-color: #ffffff;
-  /* box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3); */
 }
 
 .thoughts-content {
@@ -702,24 +442,20 @@ body {
 }
 
 /* 滚动条美化 */
-.thoughts-textarea::-webkit-scrollbar,
 .thoughts-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.thoughts-textarea::-webkit-scrollbar-track,
 .thoughts-content::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.05);
   border-radius: 3px;
 }
 
-.thoughts-textarea::-webkit-scrollbar-thumb,
 .thoughts-content::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
 }
 
-.thoughts-textarea::-webkit-scrollbar-thumb:hover,
 .thoughts-content::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
 }
@@ -749,7 +485,7 @@ body {
 
 .bar-chart-title {
   text-align: center;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: #1c1c1e;
   margin: 0 0 10px 0;
@@ -782,7 +518,7 @@ body {
 
 .pie-chart-item h3 {
   text-align: center;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   margin-bottom: 0.2rem;
   color: var(--text-color);
@@ -1020,23 +756,6 @@ body {
   background: #ffffff;
 }
 
-.day-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.8rem;
-  margin: 1rem auto;
-  width: 100%;
-  max-width: 350px;
-  padding: 0 1rem;
-}
-
-.day-buttons .emotion-button {
-  flex: 0 0 calc(33.333% - 0.533rem);
-  min-width: 100px;
-  aspect-ratio: 1;
-}
-
 .day-details h3 {
   margin-bottom: 0;
   color: var(--text-color);
@@ -1253,11 +972,6 @@ body {
   border-bottom: none;
 }
 
-/* 带链接的行，背景可感知点击 */
-.help-row-link {
-  align-items: center;
-}
-
 /* 步骤数字徽章 */
 .help-row-badge {
   flex-shrink: 0;
@@ -1302,15 +1016,6 @@ body {
 .help-row-text a:active {
   color: #0051a8;
   border-color: rgba(0, 81, 168, 0.4);
-}
-
-/* 右箭头（链接行） */
-.help-row-chevron {
-  flex-shrink: 0;
-  font-size: 18px;
-  color: #c7c7cc;
-  font-weight: 300;
-  margin-left: 4px;
 }
 
 /* ── 帮助页数据操作按钮 ── */
@@ -1890,56 +1595,10 @@ body.modal-open {
   outline-offset: 3px;
 }
 
-/* 加载和错误状态 */
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-}
-
 .error {
   color: var(--danger-color);
   text-align: center;
   margin: 1rem 0;
-}
-
-/* 通知样式 - 苹果风格 */
-.notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 0.75rem 1.25rem;
-  border-radius: 12px;
-  color: white;
-  font-weight: 500;
-  font-size: 0.9rem;
-  z-index: 10000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  transform: translateY(0);
-  opacity: 1;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  min-width: 120px;
-  text-align: center;
-}
-
-.notification.success {
-  background-color: rgba(16, 185, 129, 0.9);
-}
-
-.notification.error {
-  background-color: rgba(239, 68, 68, 0.9);
-}
-
-.notification.fade-out {
-  transform: translateY(-20px);
-  opacity: 0;
-  transition: all 0.3s ease;
 }
 
 /* 立即释放页面 */
@@ -1960,47 +1619,6 @@ body.modal-open {
   margin: 0;
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* 气泡容器 */
-.bubbles-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  z-index: 1;
-}
-
-/* 气泡样式 */
-.bubble {
-  position: absolute;
-  border-radius: 50%;
-  font-size: 16px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  z-index: 1;
-  transform-origin: center;
-  transition: opacity 0.1s ease;
-}
-
-/* 提示词容器 */
-.release-text-container {
-  position: relative;
-  z-index: 10;
-  width: 90%;
-  max-width: 400px;
-  text-align: center;
-  padding: 2rem;
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
 }
 
 /* 提示词样式 */
@@ -2029,20 +1647,8 @@ body.modal-open {
     font-size: 16px;
   }
   
-  .day-buttons {
-    gap: 0.6rem;
-    padding: 0 0.5rem;
-    max-width: 400px;
-  }
-  
   .emotion-button {
     padding: 0.8rem auto;
-    flex: 0 0 calc(33.333% - 0.4rem);
-    min-width: 90px;
-    aspect-ratio: 1;
-  }
-  
-  .day-buttons .emotion-button {
     flex: 0 0 calc(33.333% - 0.4rem);
     min-width: 90px;
     aspect-ratio: 1;
@@ -2133,12 +1739,6 @@ body.modal-open {
   text-align: center;
 }
 
-.thoughts-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
 .thoughts-action-btn {
   width: 32px;
   height: 32px;
@@ -2161,15 +1761,6 @@ body.modal-open {
 
 .thoughts-action-btn.copy-done {
   color: #34c759;
-}
-
-.thoughts-edit-hint {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #aeaeb2;
 }
 
 /* 可滚动内容区域 */
@@ -2199,22 +1790,6 @@ body.modal-open {
 button:focus {
   outline: none;
 }
-
-/* ---------------------------------------------------- */
-/* ADDED CSS STYLES FOR RELEASE PAGE */
-/* Note: Inline styles in ReleasePage.tsx handle positioning, 
-   but layout and transitions rely on these classes. */
-
-/* Bubble Style Adjustments: Assuming transition is needed for smooth visual updates */
-.bubble {
-    transition: left 0.05s linear, top 0.05s linear, transform 0.05s linear; /* Fast updates for physics simulation */
-}
-
-/* Text Style Transition Adjustments: Ensure the 0.8s transition defined in JS is respected */
-/* This section duplicates definitions from ReleasePage.tsx for completeness in CSS file context, 
-   though ReleasePage.tsx uses inline styles for opacity based on JS state. */
-
-/* The transition for text fading is defined on .release-text, which is good: transition: opacity 0.8s ease; */
 
 /* ══════════════════════════════════════
    自定义引导词页面 (CustomizerPage)
@@ -2685,23 +2260,6 @@ button:focus {
   animation: ec-fade-slide-up 0.28s ease both;
 }
 
-/* Section heading */
-.ec-sub-heading {
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 14px;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  letter-spacing: -0.3px;
-}
-
-.ec-sub-count {
-  font-size: 13px;
-  font-weight: 500;
-  color: #8e8e93;
-}
-
 /* Chips grid */
 .ec-chips-wrap {
   display: flex;
@@ -2987,12 +2545,6 @@ html[data-theme="dark"] .ec-sticky-header {
   background: rgba(28,28,30,0.85);
   border-bottom-color: rgba(255,255,255,0.08);
 }
-html[data-theme="dark"] .ec-content {
-  color: #f2f2f7;
-}
-html[data-theme="dark"] .ec-sub-title {
-  color: rgba(235,235,245,0.5);
-}
 html[data-theme="dark"] .ec-chip {
   color: rgba(235,235,245,0.9);
 }
@@ -3191,8 +2743,6 @@ html[data-theme="dark"] .modal-button:active {
     background: rgba(28,28,30,0.85);
     border-bottom-color: rgba(255,255,255,0.08);
   }
-  html:not([data-theme="light"]) .ec-content { color: #f2f2f7; }
-  html:not([data-theme="light"]) .ec-sub-title { color: rgba(235,235,245,0.5); }
   html:not([data-theme="light"]) .ec-chip { color: rgba(235,235,245,0.9); }
   html:not([data-theme="light"]) .first-time-hint-content { background: rgba(44,44,46,0.97); }
   html:not([data-theme="light"]) .first-time-hint-title { color: #f2f2f7; }

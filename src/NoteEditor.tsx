@@ -99,6 +99,23 @@ export default function NoteEditor({ onFinish, thoughts = "", onSave }: Props) {
         "--keyboard-inset",
         `${Math.round(keyboardInset)}px`
       );
+
+      // 键盘弹起后，滚动 textarea 使光标出现在键盘上方
+      if (keyboardInset > 100) {
+        requestAnimationFrame(() => {
+          const el = textareaRef.current;
+          if (!el) return;
+          // 计算光标大致 Y 位置（顶部 padding + 行高 × 行数）
+          const lineH = 18 * 1.7; // font-size × line-height
+          const topPad = 20;
+          const textBefore = el.value.substring(0, el.selectionEnd);
+          const lines = textBefore.split('\n').length;
+          const cursorY = topPad + lines * lineH;
+          // 让光标距底部留 48px 余量
+          const target = cursorY - el.clientHeight + 48;
+          if (target > el.scrollTop) el.scrollTop = target;
+        });
+      }
     };
 
     syncKeyboardInset();

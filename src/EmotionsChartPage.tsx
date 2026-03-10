@@ -76,9 +76,43 @@ const EmotionsChartPage: React.FC<Props> = ({ onClose }) => {
   const activePillRef = useRef<HTMLButtonElement>(null);
   const subListRef = useRef<HTMLDivElement>(null);
 
-  // 滑动检测：区分横向滑动 vs 点击
+  // 滑动检测：区分横向滑动 vs 点击（pills track 内部横滑切换分组）
   const touchStartX = useRef(0);
   const isSwiping = useRef(false);
+
+  // 页面级左滑返回手势（仅从屏幕左边缘 40px 内触发）
+  const pageRef = useRef<HTMLDivElement>(null);
+  const pageSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
+
+  const handlePageSwipeStart = (e: React.TouchEvent) => {
+    if (e.touches[0].clientX > 40) return;
+    pageSwipeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+  };
+  const handlePageSwipeMove = (e: React.TouchEvent) => {
+    if (!pageSwipeRef.current || !pageRef.current) return;
+    const dx = e.touches[0].clientX - pageSwipeRef.current.startX;
+    const dy = Math.abs(e.touches[0].clientY - pageSwipeRef.current.startY);
+    if (dx <= 0 || dy > Math.abs(dx)) { pageSwipeRef.current = null; return; }
+    pageRef.current.style.transform = `translateX(${dx * 0.5}px)`;
+    pageRef.current.style.opacity = `${Math.max(0.4, 1 - dx / 350)}`;
+  };
+  const handlePageSwipeEnd = (e: React.TouchEvent) => {
+    if (!pageSwipeRef.current || !pageRef.current) return;
+    const dx = e.changedTouches[0].clientX - pageSwipeRef.current.startX;
+    pageSwipeRef.current = null;
+    const el = pageRef.current;
+    if (dx > 80) {
+      el.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+      el.style.transform = 'translateX(100%)';
+      el.style.opacity = '0';
+      setTimeout(onClose, 220);
+    } else {
+      el.style.transition = 'transform 0.18s ease, opacity 0.18s ease';
+      el.style.transform = '';
+      el.style.opacity = '';
+      setTimeout(() => { if (pageRef.current) pageRef.current.style.transition = ''; }, 180);
+    }
+  };
 
   // Scroll active pill into view
   useEffect(() => {
@@ -96,7 +130,13 @@ const EmotionsChartPage: React.FC<Props> = ({ onClose }) => {
   const group = EMOTION_GROUPS[activeIdx];
 
   return (
-    <div className="ec-page">
+    <div
+      className="ec-page"
+      ref={pageRef}
+      onTouchStart={handlePageSwipeStart}
+      onTouchMove={handlePageSwipeMove}
+      onTouchEnd={handlePageSwipeEnd}
+    >
       {/* ── Top bar ── */}
       <div className="ec-topbar">
         <button

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   HomeStepConfig,
   DEFAULT_HOME_STEPS,
@@ -20,6 +20,40 @@ interface Props {
 
 const CustomizerPage: React.FC<Props> = ({ initialTab = 0, onClose }) => {
   const [activeTab, setActiveTab] = useState<0 | 1>(initialTab);
+
+  // 左滑返回手势（仅从屏幕左边缘 40px 内触发）
+  const pageRef = useRef<HTMLDivElement>(null);
+  const swipeRef = useRef<{ startX: number; startY: number } | null>(null);
+
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    if (e.touches[0].clientX > 40) return;
+    swipeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+  };
+  const handleSwipeMove = (e: React.TouchEvent) => {
+    if (!swipeRef.current || !pageRef.current) return;
+    const dx = e.touches[0].clientX - swipeRef.current.startX;
+    const dy = Math.abs(e.touches[0].clientY - swipeRef.current.startY);
+    if (dx <= 0 || dy > Math.abs(dx)) { swipeRef.current = null; return; }
+    pageRef.current.style.transform = `translateX(${dx * 0.5}px)`;
+    pageRef.current.style.opacity = `${Math.max(0.4, 1 - dx / 350)}`;
+  };
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    if (!swipeRef.current || !pageRef.current) return;
+    const dx = e.changedTouches[0].clientX - swipeRef.current.startX;
+    swipeRef.current = null;
+    const el = pageRef.current;
+    if (dx > 80) {
+      el.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+      el.style.transform = 'translateX(100%)';
+      el.style.opacity = '0';
+      setTimeout(onClose, 220);
+    } else {
+      el.style.transition = 'transform 0.18s ease, opacity 0.18s ease';
+      el.style.transform = '';
+      el.style.opacity = '';
+      setTimeout(() => { if (pageRef.current) pageRef.current.style.transition = ''; }, 180);
+    }
+  };
   const [homeSteps, setHomeSteps] = useState<HomeStepConfig[]>(() => loadHomeSteps());
   const [releaseSteps, setReleaseSteps] = useState<string[]>(() => loadReleaseSteps());
   const [releaseIntervalSec, setReleaseIntervalSec] = useState<number>(() => loadReleaseIntervalSec());
@@ -82,7 +116,13 @@ const CustomizerPage: React.FC<Props> = ({ initialTab = 0, onClose }) => {
   };
 
   return (
-    <div className="customizer-page">
+    <div
+      className="customizer-page"
+      ref={pageRef}
+      onTouchStart={handleSwipeStart}
+      onTouchMove={handleSwipeMove}
+      onTouchEnd={handleSwipeEnd}
+    >
       {/* ── Top bar ── */}
       <div className="customizer-topbar">
         <button
