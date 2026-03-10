@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { loadReleaseSteps, loadReleaseIntervalSec } from './releaseConfig';
 
 // Global variables to persist state across component remounts
 let globalInitialTime: number | null = null;
@@ -11,12 +12,9 @@ const ReleasePage: React.FC = () => {
   const shadowBgRef = useRef<HTMLDivElement>(null); // 直接操作DOM，绕过React渲染
   const initialTimeRef = useRef<number | null>(null);
   
-  const steps = [
-    '你能允许自己感受它吗',
-    '你愿意释放它吗',
-    '现在可以释放吗',
-    '你有感觉好一点吗'
-  ];
+  const [steps] = useState<string[]>(() => loadReleaseSteps());
+  const [stepSeconds] = useState<number>(() => loadReleaseIntervalSec());
+  const totalCycleDurationMs = steps.length * stepSeconds * 1000;
 
   // Function to restart the release process
   const restartRelease = () => {
@@ -32,8 +30,12 @@ const ReleasePage: React.FC = () => {
 
   // 计算渐变（纯函数，不依赖 state）
   const computeGradient = (intensity: number, container: HTMLElement): string => {
-    const baseGray = '#f9fafb';
-    const darkValue = Math.floor(255 - (intensity * 200));
+    const attr = document.documentElement.getAttribute('data-theme');
+    const isDark = attr === 'dark' || (!attr && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const baseGray = isDark ? '#0a0a0a' : '#f9fafb';
+    const darkValue = isDark
+      ? Math.floor(intensity * 50)
+      : Math.floor(255 - (intensity * 200));
     const darkGray = `rgb(${darkValue}, ${darkValue}, ${darkValue})`;
     const maxDimension = Math.max(container.clientWidth, container.clientHeight);
     const gradientSize = maxDimension * (1.0 - (intensity * 0.7));
@@ -58,7 +60,7 @@ const ReleasePage: React.FC = () => {
       if (initialTimeRef.current === null) return;
       
       const elapsed = Date.now() - initialTimeRef.current;
-      const cycleDurationMs = 30000;
+      const cycleDurationMs = totalCycleDurationMs;
       const cyclePosition = elapsed % cycleDurationMs;
       
       let intensity = 1.0 - (cyclePosition / cycleDurationMs);
@@ -84,12 +86,11 @@ const ReleasePage: React.FC = () => {
     };
   }, []);
 
-  // Text cycle logic - 4句话平分30秒，每句7.5秒（显示6.5秒 + 淡出1秒）
+  // Text cycle logic
   useEffect(() => {
-    const totalCycleDuration = 30000;
-    const stepsCount = steps.length;
-    const stepDuration = totalCycleDuration / stepsCount;
-    const textDisplayDuration = 6500;
+    const totalCycleDuration = totalCycleDurationMs;
+    const stepDuration = stepSeconds * 1000;
+    const textDisplayDuration = Math.max(1000, stepDuration - 1000);
     
     const updateTextBasedOnTime = () => {
       if (initialTimeRef.current === null) return;
@@ -152,38 +153,42 @@ const ReleasePage: React.FC = () => {
         }}
       />
       
-      {/* 提示词 - 竖排文字，楷体，水平居中 */}
+      {/* 提示词 - 竖排文字，楷体，水平居中，上下留 10vh 边距 */}
       <div 
         style={{
           position: 'relative',
           zIndex: 10,
           width: '100%',
           textAlign: 'center',
-          padding: '2rem',
+          padding: '20vh 2rem',
           backgroundColor: 'transparent',
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           height: '100vh',
+          boxSizing: 'border-box',
           pointerEvents: 'none'
         }}
       >
         <div 
           className={`release-text ${showText ? 'show' : ''}`}
           style={{
-            fontSize: '1.8rem',
-            fontFamily: "'KaiTi', '楷体', 'STKaiti', serif",
+            fontSize: '1.5rem',
+            // fontFamily: "'KaiTi', '楷体', 'STKaiti', serif",
             fontWeight: 600,
             color: 'var(--text-color)',
             lineHeight: 1.8,
             opacity: showText ? 1 : 0,
             transition: 'opacity 0.8s ease',
-            writingMode: 'vertical-rl',
+            writingMode: 'vertical-lr',
             textOrientation: 'upright',
             letterSpacing: '0.5em',
             margin: '0 auto',
-            pointerEvents: 'none'
+            pointerEvents: 'none',
+            whiteSpace: 'pre-wrap',
+            maxHeight: '80vh',
+            overflow: 'hidden',
           }}
         >
           {steps[currentStep]}

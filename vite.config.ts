@@ -19,9 +19,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: '释放法',
-        short_name: '释放法',
-        description: '释放法',
+        name: '情绪释放',
+        short_name: '情绪释放',
+        description: '情绪释放',
         theme_color: '#ffffff',
         icons: [
           {

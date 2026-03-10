@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Pie } from 'react-chartjs-2';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { HomeStepConfig, FIXED_HOME_FINAL, loadHomeSteps } from './releaseConfig';
+import { Pie, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   ArcElement,
+  BarElement,
+  CategoryScale,
+  LinearScale,
   Tooltip,
   Legend
 } from 'chart.js';
@@ -11,7 +15,7 @@ import ReleasePage from './ReleasePage';
 import HelpPage from './HelpPage';
 import NoteEditor from './NoteEditor';
 
-ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
+ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels);
 
 interface EmotionData {
   date: string;
@@ -45,6 +49,25 @@ interface EmotionData {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'stats' | 'help' | 'release'>('home');
+
+  // 主题模式：auto（跟随系统）| light | dark
+  const [themeMode, setThemeMode] = useState<'auto' | 'light' | 'dark'>(
+    () => (localStorage.getItem('themeMode') as 'auto' | 'light' | 'dark') || 'auto'
+  );
+
+  // 应用 data-theme 到 html 元素
+  useEffect(() => {
+    const html = document.documentElement;
+    if (themeMode === 'dark') {
+      html.setAttribute('data-theme', 'dark');
+    } else if (themeMode === 'light') {
+      html.setAttribute('data-theme', 'light');
+    } else {
+      html.removeAttribute('data-theme');
+    }
+    localStorage.setItem('themeMode', themeMode);
+  }, [themeMode]);
+
   const [desires, setDesires] = useState({
     wantApproval: 0,
     wantControl: 0,
@@ -89,6 +112,8 @@ const App: React.FC = () => {
     releaseCounts: Record<string, number>;
     thoughts: string;
   } | null>(null);
+
+  const [homeReleaseSteps, setHomeReleaseSteps] = useState<HomeStepConfig[]>(() => loadHomeSteps());
   
   const [longPressModal, setLongPressModal] = useState<{
     visible: boolean;
@@ -114,6 +139,13 @@ const App: React.FC = () => {
     return () => {
       document.body.classList.remove('modal-open');
     };
+  }, [longPressModal.visible]);
+
+  // 模态框打开时重载自定义步骤
+  useEffect(() => {
+    if (longPressModal.visible) {
+      setHomeReleaseSteps(loadHomeSteps());
+    }
   }, [longPressModal.visible]);
   
   // 当前显示的月份和年份
@@ -319,95 +351,72 @@ const App: React.FC = () => {
   };
 
   // 处理按钮点击
-  const handleModalButtonClick = (response: 'yes' | 'no') => {
-    setLongPressModal(prev => {
-      if (prev.step === 1) {
-        // 第一步点击后进入第二步
-        return {
-          ...prev,
-          step: 2
-        };
-      } else if (prev.step === 2) {
-        // 第二步点击后进入第三步
-        return {
-          ...prev,
-          step: 3
-        };
-      } else if (prev.step === 3) {
-        // 第三步点击后进入第四步
-        return {
-          ...prev,
-          step: 4
-        };
-      } else if (prev.step === 4) {
-        // 第四步点击后进入第五步
-        // 更新释放次数
-        setReleaseCounts(prevCounts => ({
-          ...prevCounts,
-          [prev.key]: prevCounts[prev.key as keyof typeof prevCounts] + 1
-        }));
-        return {
-          ...prev,
-          step: 5
-        };
-      } else if (prev.step === 5) {
-        if (response === 'yes') {
-          // 点击"继续释放"，回到第一步
-          return {
-            ...prev,
-            step: 1
-          };
-        } else {
-          // 点击"结束"，关闭模态框
-          // 立即保存数据
-          const today = new Date();
-          const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const date = String(today.getDate()).padStart(2, '0');
-          const todayStr = `${year}-${month}-${date}`;
-          
-          saveData({
-            date: todayStr,
-            wantApproval: desires.wantApproval,
-            wantControl: desires.wantControl,
-            wantSecurity: desires.wantSecurity,
-            despair: moods.despair,
-            sorrow: moods.sorrow,
-            fear: moods.fear,
-            greed: moods.greed,
-            anger: moods.anger,
-            pride: moods.pride,
-            fearless: moods.fearless,
-            acceptance: moods.acceptance,
-            peace: moods.peace,
-            thoughts,
-            releaseDespair: releaseCounts.despair,
-            releaseSorrow: releaseCounts.sorrow,
-            releaseFear: releaseCounts.fear,
-            releaseGreed: releaseCounts.greed,
-            releaseAnger: releaseCounts.anger,
-            releasePride: releaseCounts.pride,
-            releaseFearless: releaseCounts.fearless,
-            releaseAcceptance: releaseCounts.acceptance,
-            releasePeace: releaseCounts.peace,
-            releaseWantApproval: releaseCounts.wantApproval,
-            releaseWantControl: releaseCounts.wantControl,
-            releaseWantSecurity: releaseCounts.wantSecurity
-          }, 'handleModalButtonClick');
+  // 用 ref 追踪最新 releaseCounts，避免闭包过期导致保存数据不准确
+  const releaseCountsRef = useRef(releaseCounts);
+  useEffect(() => { releaseCountsRef.current = releaseCounts; }, [releaseCounts]);
 
-          
-          return {
-            ...prev,
-            visible: false
-          };
-        }
+  const handleModalButtonClick = (response: 'yes' | 'no') => {
+    // 直接使用已加载到 state 的 homeReleaseSteps，避免每次点击都读 localStorage
+    const N = homeReleaseSteps.length;
+    const finalStep = N + 1;
+    const currentStep = longPressModal.step;
+
+    if (currentStep < N) {
+      // 中间步骤 → 进入下一步
+      setLongPressModal(prev => ({ ...prev, step: prev.step + 1 }));
+    } else if (currentStep === N) {
+      // 最后一个问题步骤 → 记录释放次数，进入完成步
+      setReleaseCounts(prevCounts => ({
+        ...prevCounts,
+        [longPressModal.key]: prevCounts[longPressModal.key as keyof typeof prevCounts] + 1
+      }));
+      setLongPressModal(prev => ({ ...prev, step: finalStep }));
+    } else {
+      // 完成步
+      if (response === 'yes') {
+        // 继续释放 → 回到第一步
+        setLongPressModal(prev => ({ ...prev, step: 1 }));
+      } else {
+        // 结束 → 关闭弹窗，并用 ref 中最新的 releaseCounts 保存数据
+        setLongPressModal(prev => ({ ...prev, visible: false }));
+
+        const latestCounts = releaseCountsRef.current;
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const date = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${date}`;
+
+        saveData({
+          date: todayStr,
+          wantApproval: desires.wantApproval,
+          wantControl: desires.wantControl,
+          wantSecurity: desires.wantSecurity,
+          despair: moods.despair,
+          sorrow: moods.sorrow,
+          fear: moods.fear,
+          greed: moods.greed,
+          anger: moods.anger,
+          pride: moods.pride,
+          fearless: moods.fearless,
+          acceptance: moods.acceptance,
+          peace: moods.peace,
+          thoughts,
+          releaseDespair: latestCounts.despair,
+          releaseSorrow: latestCounts.sorrow,
+          releaseFear: latestCounts.fear,
+          releaseGreed: latestCounts.greed,
+          releaseAnger: latestCounts.anger,
+          releasePride: latestCounts.pride,
+          releaseFearless: latestCounts.fearless,
+          releaseAcceptance: latestCounts.acceptance,
+          releasePeace: latestCounts.peace,
+          releaseWantApproval: latestCounts.wantApproval,
+          releaseWantControl: latestCounts.wantControl,
+          releaseWantSecurity: latestCounts.wantSecurity
+        }, 'handleModalButtonClick');
       }
-      // 其他情况关闭模态框，不需要重复保存
-      return {
-        ...prev,
-        visible: false
-      };
-    });
+    }
   };
 
   // 创建长按处理函数
@@ -417,39 +426,46 @@ const App: React.FC = () => {
     let touchStartY = 0;
     const threshold = 10; // 滑动阈值
 
+    const clearPressTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
     return {
-      onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
+      onMouseDown: () => {
+        clearPressTimer();
         timer = setTimeout(() => {
           handleLongPress(type, key, label);
         }, 500);
-        e.currentTarget.addEventListener('mouseup', () => {
-          if (timer) clearTimeout(timer);
-        });
-        e.currentTarget.addEventListener('mouseleave', () => {
-          if (timer) clearTimeout(timer);
-        });
       },
+      onMouseUp: clearPressTimer,
+      onMouseLeave: clearPressTimer,
       onTouchStart: (e: React.TouchEvent<HTMLButtonElement>) => {
+        clearPressTimer();
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
+
         timer = setTimeout(() => {
           handleLongPress(type, key, label);
         }, 500);
-        e.currentTarget.addEventListener('touchend', () => {
-          if (timer) clearTimeout(timer);
-        });
-        e.currentTarget.addEventListener('touchmove', (touchEvent: TouchEvent) => {
-          if (!timer) return;
-          const touchX = (touchEvent as TouchEvent).touches[0].clientX;
-          const touchY = (touchEvent as TouchEvent).touches[0].clientY;
-          const diffX = Math.abs(touchX - touchStartX);
-          const diffY = Math.abs(touchY - touchStartY);
-          if (diffX > threshold || diffY > threshold) {
-            clearTimeout(timer);
-            timer = null;
-          }
-        });
-      }
+
+      },
+      onTouchEnd: clearPressTimer,
+      onTouchCancel: clearPressTimer,
+      onTouchMove: (e: React.TouchEvent<HTMLButtonElement>) => {
+        if (!timer || e.touches.length === 0) return;
+
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+        const diffX = Math.abs(touchX - touchStartX);
+        const diffY = Math.abs(touchY - touchStartY);
+
+        if (diffX > threshold || diffY > threshold) {
+          clearPressTimer();
+        }
+      },
     };
   };
 
@@ -807,33 +823,131 @@ const App: React.FC = () => {
     }
   };
 
-  // 获取情绪标签
-  const getMoodLabel = (key: string) => {
-    const labels: Record<string, string> = {
-      despair: '万念俱灰',
-      sorrow: '悲苦',
-      fear: '恐惧',
-      greed: '贪求',
-      anger: '愤怒',
-      pride: '自尊自傲',
-      fearless: '无畏',
-      acceptance: '接纳',
-      peace: '平静'
+  // 生成条形图数据
+  const generateBarChartData = () => {
+    const labels = ['万念俱灰', '悲苦', '恐惧', '贪求', '愤怒', '自尊自傲', '无畏', '接纳', '平静', '想被认同', '想要控制', '想要安全'];
+    // 对应首页按钮背景色
+    const baseColors = [
+      '#94a3b8', '#fda4af', '#93c5fd', '#fcd34d', '#f87171',
+      '#c4b5fd', '#6ee7b7', '#a78bfa', '#d6d3d1',
+      '#dbeafe', '#d1fae5', '#fef3c7'
+    ];
+    const recordCounts = new Array(12).fill(0);
+    const releaseCountsArr = new Array(12).fill(0);
+
+    emotionData.forEach(item => {
+      recordCounts[0] += item.despair || 0;
+      recordCounts[1] += item.sorrow || 0;
+      recordCounts[2] += item.fear || 0;
+      recordCounts[3] += item.greed || 0;
+      recordCounts[4] += item.anger || 0;
+      recordCounts[5] += item.pride || 0;
+      recordCounts[6] += item.fearless || 0;
+      recordCounts[7] += item.acceptance || 0;
+      recordCounts[8] += item.peace || 0;
+      recordCounts[9] += item.wantApproval || 0;
+      recordCounts[10] += item.wantControl || 0;
+      recordCounts[11] += item.wantSecurity || 0;
+
+      releaseCountsArr[0] += item.releaseDespair || 0;
+      releaseCountsArr[1] += item.releaseSorrow || 0;
+      releaseCountsArr[2] += item.releaseFear || 0;
+      releaseCountsArr[3] += item.releaseGreed || 0;
+      releaseCountsArr[4] += item.releaseAnger || 0;
+      releaseCountsArr[5] += item.releasePride || 0;
+      releaseCountsArr[6] += item.releaseFearless || 0;
+      releaseCountsArr[7] += item.releaseAcceptance || 0;
+      releaseCountsArr[8] += item.releasePeace || 0;
+      releaseCountsArr[9] += item.releaseWantApproval || 0;
+      releaseCountsArr[10] += item.releaseWantControl || 0;
+      releaseCountsArr[11] += item.releaseWantSecurity || 0;
+    });
+
+    const title = '迄今为止情绪/想要统计';
+    const totals = recordCounts.map((r, i) => r + releaseCountsArr[i]);
+    // 3种"想要"的边框颜色（与首页按钮一致）
+    const wantBorderColors = ['#1e40af', '#065f46', '#92400e'];
+
+    return {
+      title,
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '记录次数',
+            data: recordCounts,
+            // 透明度写法：两位 hex = Math.round(透明度% / 100 * 255).toString(16)
+            // cc = round(80/100*255)=204=0xcc → 80%
+            backgroundColor: baseColors.map(c => c + 'cc'), // 80%
+            borderWidth: (ctx: any) => ctx.dataIndex >= 9
+              ? { top: 0, right: 1, bottom: 1, left: 1 }
+              : 0,
+            borderColor: (ctx: any) => ctx.dataIndex >= 9
+              ? wantBorderColors[ctx.dataIndex - 9]
+              : 'transparent',
+            borderRadius: 0,
+            stack: 'stack'
+          } as any,
+          {
+            label: '释放次数',
+            data: releaseCountsArr,
+            backgroundColor: baseColors, // ff = 100%
+            // 非想要：底部黑色线分隔两段；想要：用专属颜色全边框
+            borderWidth: (ctx: any) => ctx.dataIndex >= 9
+              ? { top: 1, right: 1, bottom: 1, left: 1 }
+              : { top: 0, right: 0, bottom: 2, left: 0 },
+            borderColor: (ctx: any) => ctx.dataIndex >= 9
+              ? wantBorderColors[ctx.dataIndex - 9]
+              : '#000000',
+            borderRadius: 4,
+            stack: 'stack',
+            totals
+          } as any
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        layout: { padding: { top: 24 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            mode: 'index' as const,
+            intersect: false,
+            callbacks: {
+              title: (items: any[]) => items[0]?.label ?? '',
+              label: (item: any) => `${item.dataset.label}: ${item.raw}`
+            }
+          },
+          datalabels: {
+            display: (ctx: any) => ctx.datasetIndex === 1,
+            anchor: 'end' as const,
+            align: 'end' as const,
+            formatter: (_val: any, ctx: any) => {
+              const total = (ctx.dataset as any).totals?.[ctx.dataIndex];
+              return total > 0 ? total : '';
+            },
+            font: { size: 12, weight: 'bold' as const },
+            color: '#555'
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false },
+            border: { display: true },
+            ticks: { font: { size: 11 }, maxRotation: 45, minRotation: 45, padding: 2 }
+          },
+          y: {
+            stacked: true,
+            display: false,
+            grid: { display: false },
+            border: { display: false }
+          }
+        }
+      }
     };
-    return labels[key] || key;
   };
-
-  // 获取想要标签
-  const getDesireLabel = (key: string) => {
-    const labels: Record<string, string> = {
-      wantApproval: '想被认同',
-      wantControl: '想要控制',
-      wantSecurity: '想要安全'
-    };
-    return labels[key] || key;
-  };
-
-
 
   // 生成情绪饼状图数据
   const generateMoodPieData = () => {
@@ -845,63 +959,65 @@ const App: React.FC = () => {
       return itemDate.getFullYear() === year && itemDate.getMonth() === month;
     });
     
-    let despair = 0;
-    let sorrow = 0;
-    let fear = 0;
-    let greed = 0;
-    let anger = 0;
-    let pride = 0;
-    let fearless = 0;
-    let acceptance = 0;
-    let peace = 0;
-    
-    monthData.forEach(item => {
-      despair += item.despair || 0;
-      sorrow += item.sorrow || 0;
-      fear += item.fear || 0;
-      greed += item.greed || 0;
-      anger += item.anger || 0;
-      pride += item.pride || 0;
-      fearless += item.fearless || 0;
-      acceptance += item.acceptance || 0;
-      peace += item.peace || 0;
-    });
-    
-    // 过滤掉值为0的数据
-    const moodData = [
-      { label: '万念俱灰', value: despair, color: '#94a3b8', borderColor: '#334155' },
-      { label: '悲苦', value: sorrow, color: '#fda4af', borderColor: '#dc2626' },
-      { label: '恐惧', value: fear, color: '#93c5fd', borderColor: '#1d4ed8' },
-      { label: '贪求', value: greed, color: '#fcd34d', borderColor: '#d97706' },
-      { label: '愤怒', value: anger, color: '#f87171', borderColor: '#b91c1c' },
-      { label: '自尊自傲', value: pride, color: '#c4b5fd', borderColor: '#7e22ce' },
-      { label: '无畏', value: fearless, color: '#6ee7b7', borderColor: '#059669' },
-      { label: '接纳', value: acceptance, color: '#a78bfa', borderColor: '#6d28d9' },
-      { label: '平静', value: peace, color: '#94a3b8', borderColor: '#334155' }
-    ].filter(item => item.value > 0);
+    const allItems = [
+      { label: '万念俱灰', color: '#94a3b8', borderColor: '#334155', getRecord: (d: EmotionData) => d.despair || 0,    getRelease: (d: EmotionData) => d.releaseDespair || 0 },
+      { label: '悲苦',     color: '#fda4af', borderColor: '#dc2626', getRecord: (d: EmotionData) => d.sorrow || 0,     getRelease: (d: EmotionData) => d.releaseSorrow || 0 },
+      { label: '恐惧',     color: '#93c5fd', borderColor: '#1d4ed8', getRecord: (d: EmotionData) => d.fear || 0,      getRelease: (d: EmotionData) => d.releaseFear || 0 },
+      { label: '贪求',     color: '#fcd34d', borderColor: '#d97706', getRecord: (d: EmotionData) => d.greed || 0,     getRelease: (d: EmotionData) => d.releaseGreed || 0 },
+      { label: '愤怒',     color: '#f87171', borderColor: '#b91c1c', getRecord: (d: EmotionData) => d.anger || 0,     getRelease: (d: EmotionData) => d.releaseAnger || 0 },
+      { label: '自尊自傲', color: '#c4b5fd', borderColor: '#7e22ce', getRecord: (d: EmotionData) => d.pride || 0,     getRelease: (d: EmotionData) => d.releasePride || 0 },
+      { label: '无畏',     color: '#6ee7b7', borderColor: '#059669', getRecord: (d: EmotionData) => d.fearless || 0,  getRelease: (d: EmotionData) => d.releaseFearless || 0 },
+      { label: '接纳',     color: '#a78bfa', borderColor: '#6d28d9', getRecord: (d: EmotionData) => d.acceptance || 0,getRelease: (d: EmotionData) => d.releaseAcceptance || 0 },
+      { label: '平静',     color: '#d6d3d1', borderColor: '#334155', getRecord: (d: EmotionData) => d.peace || 0,     getRelease: (d: EmotionData) => d.releasePeace || 0 },
+      { label: '想被认同', color: '#dbeafe', borderColor: '#1e40af', getRecord: (d: EmotionData) => d.wantApproval || 0, getRelease: (d: EmotionData) => d.releaseWantApproval || 0 },
+      { label: '想要控制', color: '#d1fae5', borderColor: '#065f46', getRecord: (d: EmotionData) => d.wantControl || 0,  getRelease: (d: EmotionData) => d.releaseWantControl || 0 },
+      { label: '想要安全', color: '#fef3c7', borderColor: '#92400e', getRecord: (d: EmotionData) => d.wantSecurity || 0, getRelease: (d: EmotionData) => d.releaseWantSecurity || 0 },
+    ];
+
+    const pieData = allItems
+      .map(item => ({
+        ...item,
+        recordValue: monthData.reduce((s, d) => s + item.getRecord(d), 0),
+        releaseValue: monthData.reduce((s, d) => s + item.getRelease(d), 0),
+        value: 0
+      }))
+      .map(item => ({ ...item, value: item.recordValue + item.releaseValue }))
+      .filter(item => item.value > 0);
+
+    const title = `${year}年${month + 1}月情绪/想要统计`;
     
     return {
+      title,
       data: {
-        labels: moodData.map(item => item.label),
+        labels: pieData.map(item => item.label),
         datasets: [{
-          data: moodData.map(item => item.value),
-          backgroundColor: moodData.map(item => item.color),
-          borderColor: moodData.map(item => item.borderColor),
-          borderWidth: 0
+          data: pieData.map(item => item.value),
+          backgroundColor: pieData.map(item => item.color),
+          borderColor: pieData.map(item => item.borderColor),
+          borderWidth: pieData.map(item =>
+            ['想被认同', '想要控制', '想要安全'].includes(item.label) ? 1 : 0
+          )
         }]
       },
       options: {
         plugins: {
-          legend: {
-            display: false
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx: any) => {
+                const item = pieData[ctx.dataIndex];
+                return [
+                  `记录次数: ${item.recordValue}`,
+                  `释放次数: ${item.releaseValue}`
+                ];
+              }
+            }
           },
           datalabels: {
-            color: '#fff',
-            font: {
-              weight: 'bold' as const
-            },
+            color: '#333',
+            font: { weight: 'bold' as const, size: 11 },
             formatter: function(value: any, context: any) {
-              return `${moodData[context.dataIndex].label}\n${value}`;
+              return `${pieData[context.dataIndex].label}\n${value}`;
             }
           }
         }
@@ -909,56 +1025,62 @@ const App: React.FC = () => {
     };
   };
 
-  // 生成想要饼状图数据
-  const generateDesirePieData = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    const monthData = emotionData.filter(item => {
-      const itemDate = new Date(item.date);
-      return itemDate.getFullYear() === year && itemDate.getMonth() === month;
-    });
-    
-    let wantApproval = 0;
-    let wantControl = 0;
-    let wantSecurity = 0;
-    
-    monthData.forEach(item => {
-      wantApproval += item.wantApproval;
-      wantControl += item.wantControl;
-      wantSecurity += item.wantSecurity || 0;
-    });
-    
-    // 过滤掉值为0的数据
-    const desireData = [
-      { label: '想被认同', value: wantApproval, color: '#dbeafe', borderColor: '#1e40af' },
-      { label: '想要控制', value: wantControl, color: '#d1fae5', borderColor: '#065f46' },
-      { label: '想要安全', value: wantSecurity, color: '#fef3c7', borderColor: '#92400e' }
-    ].filter(item => item.value > 0);
-    
+  // 生成当日饼状图数据（根据日历选择变化）
+  const generateDayPieData = (dayData: NonNullable<typeof selectedDayData>) => {
+    const allItems = [
+      { label: '万念俱灰', color: '#94a3b8', borderColor: '#334155', record: dayData.moods.despair || 0,    release: dayData.releaseCounts.despair || 0 },
+      { label: '悲苦',     color: '#fda4af', borderColor: '#dc2626', record: dayData.moods.sorrow || 0,     release: dayData.releaseCounts.sorrow || 0 },
+      { label: '恐惧',     color: '#93c5fd', borderColor: '#1d4ed8', record: dayData.moods.fear || 0,       release: dayData.releaseCounts.fear || 0 },
+      { label: '贪求',     color: '#fcd34d', borderColor: '#d97706', record: dayData.moods.greed || 0,      release: dayData.releaseCounts.greed || 0 },
+      { label: '愤怒',     color: '#f87171', borderColor: '#b91c1c', record: dayData.moods.anger || 0,      release: dayData.releaseCounts.anger || 0 },
+      { label: '自尊自傲', color: '#c4b5fd', borderColor: '#7e22ce', record: dayData.moods.pride || 0,      release: dayData.releaseCounts.pride || 0 },
+      { label: '无畏',     color: '#6ee7b7', borderColor: '#059669', record: dayData.moods.fearless || 0,   release: dayData.releaseCounts.fearless || 0 },
+      { label: '接纳',     color: '#a78bfa', borderColor: '#6d28d9', record: dayData.moods.acceptance || 0, release: dayData.releaseCounts.acceptance || 0 },
+      { label: '平静',     color: '#d6d3d1', borderColor: '#334155', record: dayData.moods.peace || 0,      release: dayData.releaseCounts.peace || 0 },
+      { label: '想被认同', color: '#dbeafe', borderColor: '#1e40af', record: dayData.desires.wantApproval || 0,  release: dayData.releaseCounts.wantApproval || 0 },
+      { label: '想要控制', color: '#d1fae5', borderColor: '#065f46', record: dayData.desires.wantControl || 0,   release: dayData.releaseCounts.wantControl || 0 },
+      { label: '想要安全', color: '#fef3c7', borderColor: '#92400e', record: dayData.desires.wantSecurity || 0,  release: dayData.releaseCounts.wantSecurity || 0 },
+    ];
+
+    const pieItems = allItems
+      .map(item => ({ ...item, value: item.record + item.release }))
+      .filter(item => item.value > 0);
+
+    const title = `${dayData.date.replace(/-/g, '.')} 情绪/想要统计`;
+
     return {
+      title,
       data: {
-        labels: desireData.map(item => item.label),
+        labels: pieItems.map(item => item.label),
         datasets: [{
-          data: desireData.map(item => item.value),
-          backgroundColor: desireData.map(item => item.color),
-          borderColor: desireData.map(item => item.borderColor),
-          borderWidth: 0
+          data: pieItems.map(item => item.value),
+          backgroundColor: pieItems.map(item => item.color),
+          borderColor: pieItems.map(item => item.borderColor),
+          borderWidth: pieItems.map(item =>
+            ['想被认同', '想要控制', '想要安全'].includes(item.label) ? 1 : 0
+          )
         }]
       },
       options: {
         plugins: {
-          legend: {
-            display: false
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx: any) => {
+                const item = pieItems[ctx.dataIndex];
+                return [
+                  `记录次数: ${item.record}`,
+                  `释放次数: ${item.release}`
+                ];
+              }
+            }
           },
           datalabels: {
             color: '#333',
-            font: {
-              weight: 'bold' as const
-            },
-            formatter: function(value: any, context: any) {
-              return `${desireData[context.dataIndex].label}
-${value}`;
+            font: { weight: 'bold' as const, size: 11 },
+            formatter: (_value: any, context: any) => {
+              const item = pieItems[context.dataIndex];
+              return `${item.label}\n${item.value}`;
             }
           }
         }
@@ -976,6 +1098,20 @@ ${value}`;
     link.download = `emotion-data-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  // 清空数据
+  const handleClearData = async () => {
+    const db = await initDB();
+    const transaction = db.transaction('emotions', 'readwrite');
+    const store = transaction.objectStore('emotions');
+    store.clear();
+    transaction.oncomplete = () => {
+      localStorage.removeItem('hasSeenFirstTimeHint');
+      setEmotionData([]);
+      setShowFirstTimeHint(true);
+      setActiveTab('home');
+    };
   };
 
   // 导入数据
@@ -1059,11 +1195,26 @@ ${value}`;
   };
 
   const calendarDays = generateCalendar();
+  const barChartData = generateBarChartData();
   const moodPieData = generateMoodPieData();
-  const desirePieData = generateDesirePieData();
 
   const [showFirstTimeHint, setShowFirstTimeHint] = useState(false);
   const [showEditPage, setShowEditPage] = useState(false);
+  const [copyDone, setCopyDone] = useState(false);
+  const [dayCardCopyDone, setDayCardCopyDone] = useState(false);
+  const cardTapRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const lastCardTapTimeRef = useRef(0);
+
+  const dayPieData = selectedDayData ? generateDayPieData(selectedDayData) : null;
+
+  const modalStepInfo = useMemo(() => {
+    const finalStep = homeReleaseSteps.length + 1;
+    const isCompleted = longPressModal.step >= finalStep;
+    const data = isCompleted
+      ? FIXED_HOME_FINAL
+      : (homeReleaseSteps[longPressModal.step - 1] || FIXED_HOME_FINAL);
+    return { isCompleted, data };
+  }, [homeReleaseSteps, longPressModal.step]);
 
 
   // 检查是否首次使用
@@ -1080,14 +1231,33 @@ ${value}`;
     setShowFirstTimeHint(false);
   };
 
-  // 打开编辑页面
-  const openEditPage = () => {
-    setShowEditPage(true);
-  };
-
   // 关闭编辑页面
   const closeEditPage = () => {
     setShowEditPage(false);
+  };
+
+  const handleCardTouchStart = (e: React.TouchEvent) => {
+    cardTapRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  };
+  const handleCardTouchMove = (e: React.TouchEvent) => {
+    if (!cardTapRef.current) return;
+    const dy = Math.abs(e.touches[0].clientY - cardTapRef.current.y);
+    if (dy > 8) cardTapRef.current = null;
+  };
+  const handleCardTouchEnd = (e: React.TouchEvent) => {
+    if (!cardTapRef.current) return;
+    const dx = Math.abs(e.changedTouches[0].clientX - cardTapRef.current.x);
+    const dy = Math.abs(e.changedTouches[0].clientY - cardTapRef.current.y);
+    const dt = Date.now() - cardTapRef.current.t;
+    cardTapRef.current = null;
+    if (dx < 8 && dy < 8 && dt < 500) {
+      lastCardTapTimeRef.current = Date.now();
+      setShowEditPage(true);
+    }
+  };
+  const handleCardClick = () => {
+    if (Date.now() - lastCardTapTimeRef.current < 600) return;
+    setShowEditPage(true);
   };
 
   // 保存编辑内容
@@ -1095,52 +1265,29 @@ ${value}`;
     setThoughts(updatedThoughts);
   };
 
-  // 控制页面滚动
+  // 控制首页滚动锁：只加/删 class，避免直接改写 body/html 内联样式
   useEffect(() => {
-    // 阻止触摸滚动的函数
-    const preventScroll = (e: TouchEvent) => {
-      if (activeTab === 'home' && !showEditPage) {
-        e.preventDefault();
-      }
-    };
+    const shouldLock = activeTab === 'home' && !showEditPage;
 
-    // 只有在非编辑页面且当前是首页时才禁止滚动
     if (activeTab === 'home' && !showEditPage) {
-      // 更严格的滚动禁止措施，确保在iOS PWA中也能生效
-      document.body.style.overflow = 'hidden';
-      document.body.style.height = '100vh';
-      document.body.style.width = '100%';
-      document.body.style.position = 'relative';
-      document.body.style.touchAction = 'none';
-      document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.height = '100vh';
-      
-      // 添加触摸事件监听器来阻止滚动
-      document.addEventListener('touchmove', preventScroll, { passive: false });
+      document.body.classList.add('home-scroll-lock');
+      document.documentElement.classList.add('home-scroll-lock');
     } else {
-      // 恢复正常滚动
-      document.body.style.overflow = 'auto';
-      document.body.style.height = 'auto';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.touchAction = '';
-      document.documentElement.style.overflow = 'auto';
-      document.documentElement.style.height = 'auto';
-      
-      // 移除触摸事件监听器
-      document.removeEventListener('touchmove', preventScroll);
+      document.body.classList.remove('home-scroll-lock');
+      document.documentElement.classList.remove('home-scroll-lock');
     }
-    
-    // 清理函数
+
     return () => {
-      document.removeEventListener('touchmove', preventScroll);
+      if (!shouldLock) return;
+      document.body.classList.remove('home-scroll-lock');
+      document.documentElement.classList.remove('home-scroll-lock');
     };
   }, [activeTab, showEditPage]);
 
   return (
     <div>
       {/* <header className="banner">
-        <h1 className="banner-title">释放法</h1>
+        <h1 className="banner-title">情绪释放</h1>
       </header> */}
 
       <div className="app">
@@ -1148,14 +1295,16 @@ ${value}`;
         {showFirstTimeHint && (
           <div className="first-time-hint-overlay">
             <div className="first-time-hint-content">
-              <div className="first-time-hint-text">
-                <p>首次打开网站，需要点击”共享“→”添加到主屏幕“，苹果手机必须使用<strong>Safari浏览器</strong>，安卓手机”安装应用“或直接有提示。此后就可以在桌面打开应用离线使用，不必再打开浏览器。更多使用帮助请点击&lt;帮助&gt;面板查看</p>
-                {/* <p>单击按钮记录，长按开启释放。</p>
-                <p>下方数字表示记录次数，</p>
-                <p>上方数字表示释放次数。</p> */}
+              <div className="first-time-hint-icon">
+                <img src="./icon-192x192.png" alt="logo" className="first-time-hint-logo" />
               </div>
-              <button 
+              <div className="first-time-hint-title">欢迎使用</div>
+              <div className="first-time-hint-text">
+                <p>首次打开网站，需要点击浏览器选项<strong>共享</strong> → <strong>添加到主屏幕</strong>，苹果手机建议使用<strong>Safari浏览器</strong>，安卓手机浏览器选项"安装应用"或直接有安装提示。此后就可以在桌面打开应用离线使用，不必再打开浏览器。更多使用帮助请点击<strong>帮助</strong>面板查看</p>
+              </div>
+              <button
                 className="first-time-hint-button"
+                onTouchEnd={(e) => { e.preventDefault(); handleDontShowAgain(); }}
                 onClick={handleDontShowAgain}
               >
                 不再提示
@@ -1287,61 +1436,68 @@ ${value}`;
           </div>
           
           {/* 感想卡片 */}
-          <div className="card thoughts-card">
+          <div
+            className="card thoughts-card"
+            onTouchStart={handleCardTouchStart}
+            onTouchMove={handleCardTouchMove}
+            onTouchEnd={handleCardTouchEnd}
+            onClick={handleCardClick}
+          >
             <div className="thoughts-card-header">
-              <h3>今日感想</h3>
-              <div className="copy-button-container">
-                <button 
-                  className="copy-button"
-                  onClick={(event) => {
-                    if (thoughts) {
-                      const button = event.currentTarget as HTMLButtonElement;
-                      const originalText = button.textContent;
-                      
-                      // 尝试使用现代API
-                      if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(thoughts)
-                          .then(() => {
-                            // 显示对号
-                            button.textContent = '✓';
-                            // 0.5秒后恢复
-                            setTimeout(() => {
-                              button.textContent = originalText;
-                            }, 500);
-                          })
-                          .catch(_ => {
-                            // 回退到传统方法
-                            copyToClipboard(thoughts, button);
-                          });
-                      } else {
-                        // 使用传统方法
-                        copyToClipboard(thoughts, button);
-                      }
+              <span className="thoughts-card-title">今日感想</span>
+              {thoughts ? (
+                <button
+                  className={`thoughts-action-btn${copyDone ? ' copy-done' : ''}`}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const doCopy = () => {
+                      setCopyDone(true);
+                      setTimeout(() => setCopyDone(false), 1500);
+                    };
+                    if (navigator.clipboard && window.isSecureContext) {
+                      navigator.clipboard.writeText(thoughts).then(doCopy).catch(() => { copyToClipboard(thoughts); doCopy(); });
+                    } else {
+                      copyToClipboard(thoughts);
+                      doCopy();
                     }
                   }}
                 >
-                  复制
+                  {copyDone ? (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                  )}
                 </button>
-              </div>
+              ) : null}
             </div>
-            <div className="thoughts-content" onClick={openEditPage}>
-              {thoughts || '点击记录你的感想...'}
+            <div className="thoughts-content">
+              {thoughts
+                ? thoughts
+                : <span className="thoughts-placeholder">轻触，记录今日感想…</span>
+              }
             </div>
           </div>
+          
         </div>
       )}
 
       {activeTab === 'stats' && (
         <>
           <div className="charts-section">
+            <div className="bar-chart-container">
+              <h3 className="bar-chart-title">{barChartData.title}</h3>
+              <Bar data={barChartData.data} options={barChartData.options} />
+            </div>
             <div className="pie-charts-container">
               <div className="pie-chart-item">
-                <h3>当月情绪统计</h3>
+                <h3>{moodPieData.title}</h3>
                 <Pie data={moodPieData.data} options={moodPieData.options} />
-              </div>
-              <div className="pie-chart-item">
-                <h3>当月想要统计</h3>
-                <Pie data={desirePieData.data} options={desirePieData.options} />
               </div>
             </div>
           </div>
@@ -1405,71 +1561,46 @@ ${value}`;
             
             {selectedDayData && (
               <>
-                <div className="day-buttons">
-                  {Object.entries(selectedDayData.moods).map(([key, value]) => {
-                    // 检查释放次数
-                    const releaseCount = selectedDayData.releaseCounts?.[key] || 0;
-                    if (value > 0 || releaseCount > 0) {
-                      return (
-                        <button key={key} className={`emotion-button ${key}`}>
-                          <div className="release-count">{releaseCount}</div>
-                          <div className="emotion-label">{getMoodLabel(key)}</div>
-                          <div className="emotion-count">{value}</div>
-                        </button>
-                      );
-                    }
-                    return null;
-                  })}
-                  {Object.entries(selectedDayData.desires).map(([key, value]) => {
-                    // 检查释放次数
-                    const releaseCount = selectedDayData.releaseCounts?.[key] || 0;
-                    if (value > 0 || releaseCount > 0) {
-                      return (
-                        <button key={key} className={`emotion-button want-${key.replace('want', '').toLowerCase()}`}>
-                          <div className="release-count">{releaseCount}</div>
-                          <div className="emotion-label">{getDesireLabel(key)}</div>
-                          <div className="emotion-count">{value}</div>
-                        </button>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
+                {/* 当日统计饼图 */}
+                {dayPieData && (dayPieData.data.labels?.length ?? 0) > 0 && (
+                  <div className="pie-charts-container" style={{ marginTop: '1rem' }}>
+                    <div className="pie-chart-item">
+                      <h3>{dayPieData.title}</h3>
+                      <Pie data={dayPieData.data} options={dayPieData.options} />
+                    </div>
+                  </div>
+                )}
+                {/* 当日感想卡片 */}
                 {selectedDayData.thoughts && (
-                  <div className="card thoughts-card">
+                  <div className="card thoughts-card" style={{ marginTop: '1rem' }}>
                     <div className="thoughts-card-header">
-                      <h3>{selectedDayData.date.replace(/-/g, '.')}&emsp;感想</h3>
-                      <div className="copy-button-container">
-                        <button 
-                          className="copy-button"
-                          onClick={(event) => {
-                            const button = event.currentTarget as HTMLButtonElement;
-                            const originalText = button.textContent;
-                            
-                            // 尝试使用现代API
-                            if (navigator.clipboard && window.isSecureContext) {
-                              navigator.clipboard.writeText(selectedDayData.thoughts)
-                                .then(() => {
-                                  // 显示对号
-                                  button.textContent = '✓';
-                                  // 0.5秒后恢复
-                                  setTimeout(() => {
-                                    button.textContent = originalText;
-                                  }, 500);
-                                })
-                                .catch(_ => {
-                                  // 回退到传统方法
-                                  copyToClipboard(selectedDayData.thoughts, button);
-                                });
-                            } else {
-                              // 使用传统方法
-                              copyToClipboard(selectedDayData.thoughts, button);
-                            }
-                          }}
-                        >
-                          复制
-                        </button>
-                      </div>
+                      <span className="thoughts-card-title">{selectedDayData.date.replace(/-/g, '.')} 感想</span>
+                      <button
+                        className={`thoughts-action-btn${dayCardCopyDone ? ' copy-done' : ''}`}
+                        onClick={() => {
+                          const doCopy = () => {
+                            setDayCardCopyDone(true);
+                            setTimeout(() => setDayCardCopyDone(false), 1500);
+                          };
+                          if (navigator.clipboard && window.isSecureContext) {
+                            navigator.clipboard.writeText(selectedDayData.thoughts).then(doCopy).catch(() => { copyToClipboard(selectedDayData.thoughts); doCopy(); });
+                          } else {
+                            copyToClipboard(selectedDayData.thoughts);
+                            doCopy();
+                          }
+                        }}
+                      >
+                        {dayCardCopyDone ? (
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="9" y="9" width="13" height="13" rx="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                          </svg>
+                        )}
+                      </button>
                     </div>
                     <div className="thoughts-content">
                       <p>{selectedDayData.thoughts}</p>
@@ -1503,7 +1634,13 @@ ${value}`;
       )}
 
       {activeTab === 'help' && (
-        <HelpPage />
+        <HelpPage
+          onExport={exportData}
+          onImportFile={handleImportData}
+          onClearData={handleClearData}
+          themeMode={themeMode}
+          onThemeChange={setThemeMode}
+        />
       )}
 
         <div className="tab-bar">
@@ -1547,13 +1684,11 @@ ${value}`;
                 </button>
               </div>
               <div className="modal-body">
-                <p className="modal-text">
-                  {longPressModal.step === 1 ? '你能仅仅是允许自己感受它吗？' : 
-                   longPressModal.step === 2 ? '你愿意释放它吗？' : 
-                   longPressModal.step === 3 ? '什么时候释放？' : 
-                   longPressModal.step === 4 ? '现在你有感觉好一点吗？' : '本次释放完成！'}
+                {/* white-space:pre-wrap 让引导语中的换行符正确显示为换行 */}
+                <p className="modal-text" style={{ whiteSpace: 'pre-wrap' }}>
+                  {modalStepInfo.data.guide}
                 </p>
-                {longPressModal.step === 5 && (
+                {modalStepInfo.isCompleted && (
                   <div className="fireworks-container">
                     <div className="firework"></div>
                     <div className="firework"></div>
@@ -1583,19 +1718,13 @@ ${value}`;
                   className="modal-button no-button"
                   onClick={() => handleModalButtonClick('no')}
                 >
-                  {longPressModal.step === 1 ? '不能' : 
-                   longPressModal.step === 2 ? '不愿意' : 
-                   longPressModal.step === 3 ? '以后' : 
-                   longPressModal.step === 4 ? '没有' : '结束'}
+                  {modalStepInfo.data.noBtn}
                 </button>
                 <button 
                   className="modal-button yes-button"
                   onClick={() => handleModalButtonClick('yes')}
                 >
-                  {longPressModal.step === 1 ? '能' : 
-                   longPressModal.step === 2 ? '愿意' : 
-                   longPressModal.step === 3 ? '现在' : 
-                   longPressModal.step === 4 ? '有' : '继续'}
+                  {modalStepInfo.data.yesBtn}
                 </button>
               </div>
             </div>
