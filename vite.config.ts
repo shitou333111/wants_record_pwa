@@ -17,6 +17,17 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // ✨ 就是这一行，强制清理旧版本残留缓存
+        cleanupOutdatedCaches: true, 
+        
+        // 建议同时开启这两个，让新版 SW 立即接管页面
+        skipWaiting: true,
+        clientsClaim: true,
+        
+        // 这里的 globPatterns 决定了哪些文件被缓存
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+      },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: '情绪释放',
