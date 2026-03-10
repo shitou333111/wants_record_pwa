@@ -1204,6 +1204,8 @@ const App: React.FC = () => {
   const [dayCardCopyDone, setDayCardCopyDone] = useState(false);
   const cardTapRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lastCardTapTimeRef = useRef(0);
+  // iOS PWA: pre-focus a hidden input within the user gesture to unlock keyboard
+  const iosKbRef = useRef<HTMLInputElement>(null);
 
   const dayPieData = selectedDayData ? generateDayPieData(selectedDayData) : null;
 
@@ -1252,11 +1254,13 @@ const App: React.FC = () => {
     cardTapRef.current = null;
     if (dx < 8 && dy < 8 && dt < 500) {
       lastCardTapTimeRef.current = Date.now();
+      iosKbRef.current?.focus();
       setShowEditPage(true);
     }
   };
   const handleCardClick = () => {
     if (Date.now() - lastCardTapTimeRef.current < 600) return;
+    iosKbRef.current?.focus();
     setShowEditPage(true);
   };
 
@@ -1291,6 +1295,12 @@ const App: React.FC = () => {
       </header> */}
 
       <div className="app">
+        {/* iOS PWA 键盘解锁隐藏输入框 */}
+        <input
+          ref={iosKbRef}
+          aria-hidden="true"
+          style={{ position: 'fixed', left: '-9999px', top: 0, opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
+        />
         {/* 首次使用提示 */}
         {showFirstTimeHint && (
           <div className="first-time-hint-overlay">

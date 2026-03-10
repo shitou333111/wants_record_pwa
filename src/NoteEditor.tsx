@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./noteEditor.css";
 
 type Props = {
@@ -45,41 +45,32 @@ export default function NoteEditor({ onFinish, thoughts = "", onSave }: Props) {
 
   }, []);
 
-  /* 进入编辑页后聚焦并把光标放到末尾（iOS 需多次尝试以提高成功率） */
+  /* 进入编辑页后聚焦并把光标放到末尾（iOS 需 useLayoutEffect 在 DOM commit 后立即触发） */
+
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el || didInitFocusRef.current) return;
+    didInitFocusRef.current = true;
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      el.focus();
+    }
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  }, []);
 
   useEffect(() => {
-
     const el = textareaRef.current;
     if (!el) return;
-
-    const focusToEnd = () => {
-      try {
-        el.focus({ preventScroll: true });
-      } catch {
-        el.focus();
-      }
-
-      if (didInitFocusRef.current) return;
-
-      const end = el.value.length;
-      el.setSelectionRange(end, end);
-      didInitFocusRef.current = true;
-    };
-
-    requestAnimationFrame(() => {
-      focusToEnd();
-    });
-
-    const timer1 = window.setTimeout(() => {
-      if (document.activeElement !== el) {
-        focusToEnd();
-      }
-    }, 120);
-
-    return () => {
-      clearTimeout(timer1);
-    };
-
+    // 兜底：若 useLayoutEffect 未能弹出键盘，50ms 和 300ms 再次尝试
+    const t1 = window.setTimeout(() => {
+      if (document.activeElement !== el) el.focus();
+    }, 50);
+    const t2 = window.setTimeout(() => {
+      if (document.activeElement !== el) el.focus();
+    }, 300);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   /* 让输入法高度与页面留白同步，避免底部文字被遮挡 */
