@@ -1,12 +1,5 @@
 name: Deploy Preview
 
-run: |
-          # 关键点：如果是预览版，基础路径必须包含子目录
-          # 注意：如果是 github.io 访问，路径是 /仓库名/子目录/
-          # 如果是自定义域名访问，路径是 /子目录/
-          export VITE_BASE='/wants_record_pwa/previews/latest/'
-          npm run build
-
 on:
   push:
     branches: [ main ]  # 只要 push 到 main 就触发
