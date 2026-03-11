@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { HomeStepConfig, FIXED_HOME_FINAL, loadHomeSteps } from './releaseConfig';
 import { Pie, Bar } from 'react-chartjs-2';
 import {
@@ -1201,6 +1202,23 @@ const App: React.FC = () => {
   const [showFirstTimeHint, setShowFirstTimeHint] = useState(
     () => !localStorage.getItem('hasSeenFirstTimeHint')
   );
+
+  // PWA 更新检测
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      if (!r) return;
+      // iOS PWA 工作在前台时主动轮询更新，解决 iOS 不允许后台运行的限制
+      const checkUpdate = () => {
+        if (document.visibilityState === 'visible') r.update();
+      };
+      document.addEventListener('visibilitychange', checkUpdate);
+      // 每 60 分钟补充轮询一次
+      setInterval(checkUpdate, 60 * 60 * 1000);
+    },
+  });
   const [showEditPage, setShowEditPage] = useState(false);
   const [copyDone, setCopyDone] = useState(false);
   const [dayCardCopyDone, setDayCardCopyDone] = useState(false);
@@ -1297,6 +1315,19 @@ const App: React.FC = () => {
           aria-hidden="true"
           style={{ position: 'fixed', left: '-9999px', top: 0, opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
         />
+        {/* PWA 版本更新横幅 */}
+        {needRefresh && (
+          <div className="pwa-update-banner">
+            <span className="pwa-update-text">✨ 发现新版本</span>
+            <button
+              className="pwa-update-btn"
+              onClick={() => updateServiceWorker()}
+              onTouchEnd={(e) => { e.preventDefault(); updateServiceWorker(); }}
+            >
+              立即更新
+            </button>
+          </div>
+        )}
         {/* 首次使用提示 */}
         {showFirstTimeHint && (
           <div className="first-time-hint-overlay">

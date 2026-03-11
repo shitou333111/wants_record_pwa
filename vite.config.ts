@@ -16,16 +16,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       workbox: {
-        // ✨ 就是这一行，强制清理旧版本残留缓存
-        cleanupOutdatedCaches: true, 
-        
-        // 建议同时开启这两个，让新版 SW 立即接管页面
-        skipWaiting: true,
+        cleanupOutdatedCaches: true,
+        // skipWaiting 故意不设置 — 使用 prompt 模式，由用户点击触发更新
+        // 新 SW 安装后进入 waiting 状态，等待 SKIP_WAITING 消息
         clientsClaim: true,
-        
-        // 这里的 globPatterns 决定了哪些文件被缓存
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
