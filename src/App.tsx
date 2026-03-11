@@ -14,8 +14,16 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import ReleasePage from './ReleasePage';
 import HelpPage from './HelpPage';
 import NoteEditor from './NoteEditor';
+import ParticleEffectButton from 'react-particle-effect-button';
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels);
+
+const BUTTON_COLORS: Record<string, string> = {
+  despair: '#94a3b8', sorrow: '#fda4af', fear: '#93c5fd',
+  greed: '#fcd34d', anger: '#f87171', pride: '#c4b5fd',
+  fearless: '#6ee7b7', acceptance: '#a78bfa', peace: '#d6d3d1',
+  wantApproval: '#dbeafe', wantControl: '#d1fae5', wantSecurity: '#fef3c7',
+};
 
 interface EmotionData {
   date: string;
@@ -350,6 +358,26 @@ const App: React.FC = () => {
     });
   };
 
+  // 粒子消散效果 state 与 ref
+  const [particleHidden, setParticleHidden] = useState(false);
+  // 关闭阶段: none→hiding（其他元素淡出）→particles（粒子动画）→clearing（背景模糊淡出）
+  const [closePhase, setClosePhase] = useState<'none' | 'hiding' | 'particles' | 'clearing'>('none');
+  const [btnFixedPos, setBtnFixedPos] = useState<{ cx: number; cy: number; w: number; h: number } | null>(null);
+  const buttonWrapperRef = useRef<HTMLDivElement>(null);
+  const pendingCloseDataRef = useRef<(() => void) | null>(null);
+
+  const handleParticleComplete = useCallback(() => {
+    pendingCloseDataRef.current?.();
+    pendingCloseDataRef.current = null;
+    setClosePhase('clearing');
+    setTimeout(() => {
+      setLongPressModal(prev => ({ ...prev, visible: false }));
+      setClosePhase('none');
+      setBtnFixedPos(null);
+      setParticleHidden(false); // 重置，供下次打开使用
+    }, 650);
+  }, []);
+
   // 处理按钮点击
   // 用 ref 追踪最新 releaseCounts，避免闭包过期导致保存数据不准确
   const releaseCountsRef = useRef(releaseCounts);
@@ -377,9 +405,7 @@ const App: React.FC = () => {
         // 继续释放 → 回到第一步
         setLongPressModal(prev => ({ ...prev, step: 1 }));
       } else {
-        // 结束 → 关闭弹窗，并用 ref 中最新的 releaseCounts 保存数据
-        setLongPressModal(prev => ({ ...prev, visible: false }));
-
+        // 结束 → 触发粒子消散动画，动画结束后（onComplete）关闭弹窗并保存数据
         const latestCounts = releaseCountsRef.current;
         const today = new Date();
         const year = today.getFullYear();
@@ -387,34 +413,49 @@ const App: React.FC = () => {
         const date = String(today.getDate()).padStart(2, '0');
         const todayStr = `${year}-${month}-${date}`;
 
-        saveData({
-          date: todayStr,
-          wantApproval: desires.wantApproval,
-          wantControl: desires.wantControl,
-          wantSecurity: desires.wantSecurity,
-          despair: moods.despair,
-          sorrow: moods.sorrow,
-          fear: moods.fear,
-          greed: moods.greed,
-          anger: moods.anger,
-          pride: moods.pride,
-          fearless: moods.fearless,
-          acceptance: moods.acceptance,
-          peace: moods.peace,
-          thoughts,
-          releaseDespair: latestCounts.despair,
-          releaseSorrow: latestCounts.sorrow,
-          releaseFear: latestCounts.fear,
-          releaseGreed: latestCounts.greed,
-          releaseAnger: latestCounts.anger,
-          releasePride: latestCounts.pride,
-          releaseFearless: latestCounts.fearless,
-          releaseAcceptance: latestCounts.acceptance,
-          releasePeace: latestCounts.peace,
-          releaseWantApproval: latestCounts.wantApproval,
-          releaseWantControl: latestCounts.wantControl,
-          releaseWantSecurity: latestCounts.wantSecurity
-        }, 'handleModalButtonClick');
+        pendingCloseDataRef.current = () => {
+          saveData({
+            date: todayStr,
+            wantApproval: desires.wantApproval,
+            wantControl: desires.wantControl,
+            wantSecurity: desires.wantSecurity,
+            despair: moods.despair,
+            sorrow: moods.sorrow,
+            fear: moods.fear,
+            greed: moods.greed,
+            anger: moods.anger,
+            pride: moods.pride,
+            fearless: moods.fearless,
+            acceptance: moods.acceptance,
+            peace: moods.peace,
+            thoughts,
+            releaseDespair: latestCounts.despair,
+            releaseSorrow: latestCounts.sorrow,
+            releaseFear: latestCounts.fear,
+            releaseGreed: latestCounts.greed,
+            releaseAnger: latestCounts.anger,
+            releasePride: latestCounts.pride,
+            releaseFearless: latestCounts.fearless,
+            releaseAcceptance: latestCounts.acceptance,
+            releasePeace: latestCounts.peace,
+            releaseWantApproval: latestCounts.wantApproval,
+            releaseWantControl: latestCounts.wantControl,
+            releaseWantSecurity: latestCounts.wantSecurity
+          }, 'handleModalButtonClick');
+        };
+        // 捕获按钮视觉位置，进入 hiding 阶段（其他元素淡出）
+        const wrapperEl = buttonWrapperRef.current;
+        if (wrapperEl) {
+          const rect = wrapperEl.getBoundingClientRect();
+          setBtnFixedPos({ cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width, h: rect.height });
+        }
+        setClosePhase('hiding');
+        // 250ms 后：其他元素已淡出，切换到粒子阶段
+        setTimeout(() => {
+          setClosePhase('particles');
+          // 再等一帧让按钮以 hidden=false 挂载，再触发动画
+          setTimeout(() => setParticleHidden(true), 50);
+        }, 250);
       }
     }
   };
@@ -1687,62 +1728,93 @@ const App: React.FC = () => {
 
         {/* 长按模态框 */}
         {longPressModal.visible && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <button 
-                  className={`emotion-button ${longPressModal.key.startsWith('want') ? `want-${longPressModal.key.replace('want', '').toLowerCase()}` : longPressModal.key}`}
-                  style={{ margin: '0 auto' }}
-                >
-                  <div className="emotion-label">{longPressModal.label}</div>
-                </button>
-              </div>
-              <div className="modal-body">
-                {/* white-space:pre-wrap 让引导语中的换行符正确显示为换行 */}
-                <p className="modal-text" style={{ whiteSpace: 'pre-wrap' }}>
-                  {modalStepInfo.data.guide}
-                </p>
-                {modalStepInfo.isCompleted && (
-                  <div className="fireworks-container">
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    {/* <div className="firework"></div> */}
-                    {/* <div className="firework"></div> */}
-                    {/* <div className="firework"></div> */}
-                    {/* <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div>
-                    <div className="firework"></div> */}
+          <>
+            {/* 遮罩层：始终保持背景模糊，clearing 阶段渐隐消失 */}
+            <div
+              className="modal-overlay"
+              style={{
+                backgroundColor: closePhase === 'clearing' ? 'transparent' : undefined,
+                backdropFilter: closePhase === 'clearing' ? 'blur(0px)' : undefined,
+                WebkitBackdropFilter: closePhase === 'clearing' ? 'blur(0px)' : undefined,
+                transition: 'backdrop-filter 0.65s ease, -webkit-backdrop-filter 0.65s ease, background-color 0.4s ease',
+              }}
+            >
+              {/* 模态框内容：hiding 之前正常显示，hiding 起淡出，particles 起隐藏 */}
+              {(closePhase === 'none' || closePhase === 'hiding') && (
+                <div className="modal-content">
+                  <div className="modal-header">
+                    {/* ref 用于捕获按钮视觉位置 */}
+                    <div ref={buttonWrapperRef} style={{ transform: 'scale(1.5)', margin: '10px 0 30px 0' }}>
+                      <button
+                        className={`emotion-button ${longPressModal.key.startsWith('want') ? `want-${longPressModal.key.replace('want', '').toLowerCase()}` : longPressModal.key}`}
+                      >
+                        <div className="emotion-label">{longPressModal.label}</div>
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button 
-                  className="modal-button no-button"
-                  onClick={() => handleModalButtonClick('no')}
-                >
-                  {modalStepInfo.data.noBtn}
-                </button>
-                <button 
-                  className="modal-button yes-button"
-                  onClick={() => handleModalButtonClick('yes')}
-                >
-                  {modalStepInfo.data.yesBtn}
-                </button>
-              </div>
+                  <div
+                    className="modal-body"
+                    style={{ opacity: closePhase === 'hiding' ? 0 : 1, transition: 'opacity 0.25s ease' }}
+                  >
+                    <p className="modal-text" style={{ whiteSpace: 'pre-wrap' }}>
+                      {modalStepInfo.data.guide}
+                    </p>
+                  </div>
+                  <div
+                    className="modal-footer"
+                    style={{ opacity: closePhase === 'hiding' ? 0 : 1, transition: 'opacity 0.25s ease' }}
+                  >
+                    <button
+                      className="modal-button no-button"
+                      onClick={() => handleModalButtonClick('no')}
+                    >
+                      {modalStepInfo.data.noBtn}
+                    </button>
+                    <button
+                      className="modal-button yes-button"
+                      onClick={() => handleModalButtonClick('yes')}
+                    >
+                      {modalStepInfo.data.yesBtn}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+
+            {/* 粒子按钮：particles 阶段固定在原按钮位置，canvas 覆盖全屏 */}
+            {closePhase === 'particles' && btnFixedPos && (
+              <div style={{
+                position: 'fixed', top: 0, left: 0,
+                width: '100%', height: '100%',
+                zIndex: 1001, pointerEvents: 'none',
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: btnFixedPos.cy - btnFixedPos.h / 2,
+                  left: btnFixedPos.cx - btnFixedPos.w / 2,
+                  width: btnFixedPos.w,
+                  height: btnFixedPos.h,
+                }}>
+                  <ParticleEffectButton
+                    hidden={particleHidden}
+                    color={BUTTON_COLORS[longPressModal.key] || '#94a3b8'}
+                    direction="top"
+                    duration={1000}
+                    particlesAmountCoefficient={6}
+                    canvasPadding={Math.max(window.innerWidth, window.innerHeight)}
+                    onComplete={handleParticleComplete}
+                  >
+                    <button
+                      className={`emotion-button ${longPressModal.key.startsWith('want') ? `want-${longPressModal.key.replace('want', '').toLowerCase()}` : longPressModal.key}`}
+                      style={{ width: `${btnFixedPos.w}px`, height: `${btnFixedPos.h}px`, minWidth: 'unset', flex: 'none' }}
+                    >
+                      <div className="emotion-label">{longPressModal.label}</div>
+                    </button>
+                  </ParticleEffectButton>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* 编辑页面 */}

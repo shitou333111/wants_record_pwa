@@ -1238,7 +1238,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1247,6 +1247,8 @@ body {
   -webkit-backdrop-filter: blur(10px);
   overflow: hidden;
   animation: fadeIn 0.2s ease-out;
+  /* 为模糊淡出和背景透明化提供过渡 */
+  transition: backdrop-filter 0.65s ease, -webkit-backdrop-filter 0.65s ease, background-color 0.4s ease;
 }
 
 @keyframes fadeIn {
@@ -1297,12 +1299,12 @@ body.modal-open {
   justify-content: center;
   margin-bottom: 0;
   padding-top: 10px;
-  padding-bottom: 10px;
+  /* 增大底部间距，补偿 scale(1.5) 带来的视觉溢出，防止与文字區重叠 */
+  padding-bottom: 30px;
 }
 
 .modal-header .emotion-button {
-  transform: scale(1.5);
-  margin: 10px 0;
+  margin: 0;
 }
 
 .modal-body {
