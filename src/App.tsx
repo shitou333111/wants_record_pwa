@@ -874,7 +874,7 @@ const App: React.FC = () => {
         labels,
         datasets: [
           {
-            label: '记录次数',
+            label: '觉察次数',
             data: recordCounts,
             // 透明度写法：两位 hex = Math.round(透明度% / 100 * 255).toString(16)
             // cc = round(80/100*255)=204=0xcc → 80%
@@ -1007,7 +1007,7 @@ const App: React.FC = () => {
               label: (ctx: any) => {
                 const item = pieData[ctx.dataIndex];
                 return [
-                  `记录次数: ${item.recordValue}`,
+                  `觉察次数: ${item.recordValue}`,
                   `释放次数: ${item.releaseValue}`
                 ];
               }
@@ -1069,7 +1069,7 @@ const App: React.FC = () => {
               label: (ctx: any) => {
                 const item = pieItems[ctx.dataIndex];
                 return [
-                  `记录次数: ${item.record}`,
+                  `觉察次数: ${item.record}`,
                   `释放次数: ${item.release}`
                 ];
               }

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import CustomizerPage from './CustomizerPage';
 import EmotionsChartPage from './EmotionsChartPage';
 
@@ -14,13 +14,17 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showEmotionsChart, setShowEmotionsChart] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showFeedbackImg, setShowFeedbackImg] = useState(false);
+  // Guard: ignore touch events on action buttons for the first 300ms after mount
+  // (prevents ghost taps when returning from sub-pages whose back button was long-pressed)
+  const mountTimeRef = useRef(Date.now());
 
   if (showCustomizer) {
-    return <CustomizerPage initialTab={0} onClose={() => setShowCustomizer(false)} />;
+    return <CustomizerPage initialTab={0} onClose={() => { mountTimeRef.current = Date.now(); setShowCustomizer(false); }} />;
   }
 
   if (showEmotionsChart) {
-    return <EmotionsChartPage onClose={() => setShowEmotionsChart(false)} />;
+    return <EmotionsChartPage onClose={() => { mountTimeRef.current = Date.now(); setShowEmotionsChart(false); }} />;
   }
 
   return (
@@ -60,21 +64,21 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
       <div className="help-data-actions">
         <button
           className="help-action-btn help-action-danger"
-          onTouchEnd={(e) => { e.preventDefault(); setShowClearConfirm(true); }}
+          onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); setShowClearConfirm(true); }}
           onClick={() => setShowClearConfirm(true)}
         >
           清空数据
         </button>
         <button
           className="help-action-btn"
-          onTouchEnd={(e) => { e.preventDefault(); onExport(); }}
+          onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); onExport(); }}
           onClick={onExport}
         >
           导出数据
         </button>
         <button
           className="help-action-btn"
-          onTouchEnd={(e) => { e.preventDefault(); document.getElementById('help-import-input')?.click(); }}
+          onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); document.getElementById('help-import-input')?.click(); }}
           onClick={() => document.getElementById('help-import-input')?.click()}
         >
           导入数据
@@ -165,7 +169,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
           </div>
           <div className="help-row">
             <p className="help-row-text">
-              B 站 <a href="https://space.bilibili.com/2104376857" target="_blank" rel="noopener noreferrer">哈师傅不叫哈师父</a>，分享释放法相关的视频和直播
+              B 站 <img src="./BilibiliUP-40x40.jpg" alt="应用图标" className="help-inline-icon" /><a href="https://space.bilibili.com/2104376857" target="_blank" rel="noopener noreferrer">哈师傅不叫哈师父</a>，分享释放法相关的视频和直播
             </p>
           </div>
           <div className="help-row">
@@ -211,29 +215,37 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
       <div className="help-card">
         <div className="help-card-header">
           <span className="help-card-icon">🛠</span>
-          <span className="help-card-title">Todo (or not todo~)</span>
+          <span className="help-card-title">Todo (or not Todo~)</span>
         </div>
         <div className="help-list">
           <div className="help-row">
-            <p className="help-row-text"><strong>Bug 修复</strong>：iOS 上感想卡片点击输入有时弹起位置不对；输入框长按无法选中文字。</p>
+            <p className="help-row-text"><strong>Bug 修复</strong>：iOS 点击进入今日感想编辑页面，输入光标行过低被输入法面板遮挡；需要将网站更新推送到PWA应用中。</p>
           </div>
           <div className="help-row">
-            <p className="help-row-text">确保<strong>数据安全</strong>！识别什么情况会导致数据丢失，以及如何恢复。</p>
+            <p className="help-row-text">确保<strong>数据安全</strong>！识别什么情况会导致清除缓存，导致数据丢失，以及如何恢复。</p>
           </div>
           <div className="help-row">
-            <p className="help-row-text">完善<strong>释放流程</strong>，包括顺序逻辑与提示语。</p>
-          </div>
-          <div className="help-row">
-            <p className="help-row-text"><strong>样式美化</strong>：⚡ 面板动态背景、通知栏融合、首页按钮颜色、合适字体。</p>
+            <p className="help-row-text"><strong>样式美化</strong>：⚡ 面板动态背景、通知栏融合、首页按钮颜色、更美观的字体。</p>
           </div>
           <div className="help-row">
             <p className="help-row-text">补充 <strong>相关资料</strong></p>
           </div>
           <div className="help-row">
-            <p className="help-row-text">……</p>
+            <p className="help-row-text"><a href="https://wj.qq.com/s2/25934282/dfce/" target="_blank" rel="noopener noreferrer">点击这里</a>或扫码，反馈Bug和需求  <img src="./feedback.png" alt="腾讯问卷扫码" className="help-feedback-Qcode" onClick={() => setShowFeedbackImg(true)} /> </p>
           </div>
         </div>
       </div>
+
+      {/* ── 反馈二维码灯箱 ── */}
+      {showFeedbackImg && (
+        <div
+          className="feedback-lightbox"
+          onClick={() => setShowFeedbackImg(false)}
+          onTouchEnd={(e) => { e.preventDefault(); setShowFeedbackImg(false); }}
+        >
+          <img src="./feedback.png" alt="腾讯问卷扫码" className="feedback-lightbox-img" />
+        </div>
+      )}
 
     </div>
   );

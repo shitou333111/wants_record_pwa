@@ -111,8 +111,8 @@ export default function NoteEditor({ onFinish, thoughts = "", onSave }: Props) {
           const textBefore = el.value.substring(0, el.selectionEnd);
           const lines = textBefore.split('\n').length;
           const cursorY = topPad + lines * lineH;
-          // 让光标距底部留 48px 余量
-          const target = cursorY - el.clientHeight + 48;
+          // 让光标距底部留 58px 余量（含 10px 冗余让光标行下限在输入法上方）
+          const target = cursorY - el.clientHeight + 58;
           if (target > el.scrollTop) el.scrollTop = target;
         });
       }
@@ -326,15 +326,15 @@ export default function NoteEditor({ onFinish, thoughts = "", onSave }: Props) {
     ) as HTMLElement;
 
     if (page) {
-      page.style.transform = "translateY(68%) scale(0.78)";
+      page.style.transform = "translateY(55%) scale(0.62)";
       page.style.opacity = "0";
-      page.style.borderRadius = "24px";
-      page.style.transition = "all 0.38s cubic-bezier(0.32, 0.72, 0, 1)";
+      page.style.borderRadius = "32px";
+      page.style.transition = "all 0.52s cubic-bezier(0.32, 0.72, 0, 1)";
     }
 
     setTimeout(() => {
       onFinish?.();
-    }, 450);
+    }, 580);
   };
 
   return (
