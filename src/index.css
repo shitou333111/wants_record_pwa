@@ -1493,6 +1493,9 @@ body.modal-open {
   padding: 24px;
   box-sizing: border-box;
   animation: fth-backdrop-in 0.28s ease both;
+  /* 蒙层本身接管触摸，防止橡皮筋滚动穿透 */
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .first-time-hint-content {

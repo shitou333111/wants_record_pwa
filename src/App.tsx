@@ -1264,10 +1264,12 @@ const App: React.FC = () => {
   };
 
   // 控制首页滚动锁：只加/删 class，避免直接改写 body/html 内联样式
+  // 注意：首次提示蒙层可见时不加锁——等蒙层关闭后再加，此时 iOS 视口已稳定，
+  // 避免 backdrop-filter 蒙层与 home-scroll-lock 同帧渲染导致 fixed 元素坐标偏移
   useEffect(() => {
-    const shouldLock = activeTab === 'home' && !showEditPage;
+    const shouldLock = activeTab === 'home' && !showEditPage && !showFirstTimeHint;
 
-    if (activeTab === 'home' && !showEditPage) {
+    if (shouldLock) {
       document.body.classList.add('home-scroll-lock');
       document.documentElement.classList.add('home-scroll-lock');
     } else {
@@ -1280,7 +1282,7 @@ const App: React.FC = () => {
       document.body.classList.remove('home-scroll-lock');
       document.documentElement.classList.remove('home-scroll-lock');
     };
-  }, [activeTab, showEditPage]);
+  }, [activeTab, showEditPage, showFirstTimeHint]);
 
   return (
     <div>
