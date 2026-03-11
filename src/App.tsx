@@ -1198,7 +1198,9 @@ const App: React.FC = () => {
   const barChartData = generateBarChartData();
   const moodPieData = generateMoodPieData();
 
-  const [showFirstTimeHint, setShowFirstTimeHint] = useState(false);
+  const [showFirstTimeHint, setShowFirstTimeHint] = useState(
+    () => !localStorage.getItem('hasSeenFirstTimeHint')
+  );
   const [showEditPage, setShowEditPage] = useState(false);
   const [copyDone, setCopyDone] = useState(false);
   const [dayCardCopyDone, setDayCardCopyDone] = useState(false);
@@ -1218,14 +1220,6 @@ const App: React.FC = () => {
     return { isCompleted, data };
   }, [homeReleaseSteps, longPressModal.step]);
 
-
-  // 检查是否首次使用
-  useEffect(() => {
-    const hasSeenHint = localStorage.getItem('hasSeenFirstTimeHint');
-    if (!hasSeenHint) {
-      setShowFirstTimeHint(true);
-    }
-  }, []);
 
   // 处理不再提示
   const handleDontShowAgain = () => {
