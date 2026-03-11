@@ -61,35 +61,37 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
       )}
 
       {/* ── 数据操作按钮 ── */}
-      <div className="help-data-actions">
-        <button
-          className="help-action-btn help-action-danger"
-          onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); setShowClearConfirm(true); }}
-          onClick={() => setShowClearConfirm(true)}
-        >
-          清空数据
-        </button>
-        <button
-          className="help-action-btn"
-          onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); onExport(); }}
-          onClick={onExport}
-        >
-          导出数据
-        </button>
-        <button
-          className="help-action-btn"
-          onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); document.getElementById('help-import-input')?.click(); }}
-          onClick={() => document.getElementById('help-import-input')?.click()}
-        >
-          导入数据
-        </button>
-        <input
-          type="file"
-          id="help-import-input"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={onImportFile}
-        />
+      <div className="help-card">
+        <div className="help-data-actions" style={{ padding: '12px 24px' }}>
+          <button
+            className="help-action-btn help-action-danger"
+            onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); setShowClearConfirm(true); }}
+            onClick={() => setShowClearConfirm(true)}
+          >
+            清空数据
+          </button>
+          <button
+            className="help-action-btn"
+            onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); onExport(); }}
+            onClick={onExport}
+          >
+            导出数据
+          </button>
+          <button
+            className="help-action-btn"
+            onTouchEnd={(e) => { if (Date.now() - mountTimeRef.current < 300) return; e.preventDefault(); document.getElementById('help-import-input')?.click(); }}
+            onClick={() => document.getElementById('help-import-input')?.click()}
+          >
+            导入数据
+          </button>
+          <input
+            type="file"
+            id="help-import-input"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={onImportFile}
+          />
+        </div>
       </div>
 
       {/* ── 外观模式 ── */}
@@ -231,7 +233,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
             <p className="help-row-text">补充更多资料</p>
           </div>
           <div className="help-row">
-            <p className="help-row-text"><a href="https://wj.qq.com/s2/25934282/dfce/" target="_blank" rel="noopener noreferrer">点击这里</a>或扫码，反馈Bug和需求  <img src="./feedback.png" alt="腾讯问卷扫码" className="help-feedback-Qcode" onClick={() => setShowFeedbackImg(true)} /> </p>
+            <p className="help-row-text"><a href="https://wj.qq.com/s2/25934282/dfce/" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">点击这里</a>或扫码，反馈Bug和需求  <img src="./feedback.png" alt="腾讯问卷扫码" className="help-feedback-Qcode" onClick={() => setShowFeedbackImg(true)} /> </p>
           </div>
         </div>
       </div>

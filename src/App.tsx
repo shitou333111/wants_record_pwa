@@ -1666,21 +1666,7 @@ const App: React.FC = () => {
             )}
           </div>
           
-          <div className="export-section">
-            <button className="export-button" onClick={exportData}>
-              导出数据
-            </button>
-            <button className="export-button" onClick={() => document.getElementById('import-input')?.click()}>
-              导入数据
-            </button>
-            <input 
-              type="file" 
-              id="import-input" 
-              accept=".json" 
-              style={{ display: 'none' }} 
-              onChange={handleImportData}
-            />
-          </div>
+
         </>
       )}
 
@@ -1808,7 +1794,7 @@ const App: React.FC = () => {
                       className={`emotion-button ${longPressModal.key.startsWith('want') ? `want-${longPressModal.key.replace('want', '').toLowerCase()}` : longPressModal.key}`}
                       style={{ width: `${btnFixedPos.w}px`, height: `${btnFixedPos.h}px`, minWidth: 'unset', flex: 'none' }}
                     >
-                      <div className="emotion-label">{longPressModal.label}</div>
+                      <div className="emotion-label" style={{ fontSize: '1.5rem' }}>{longPressModal.label}</div>
                     </button>
                   </ParticleEffectButton>
                 </div>

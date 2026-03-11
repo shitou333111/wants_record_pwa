@@ -1035,7 +1035,6 @@ body {
   display: flex;
   flex-direction: row;
   gap: 10px;
-  margin-bottom: 12px;
   padding: 0 12px;
 }
 
@@ -1262,9 +1261,8 @@ body {
 
 body.modal-open {
   overflow: hidden;
-  position: fixed;
-  width: 100%;
-  height: 100%;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 .modal-content {
@@ -2503,6 +2501,19 @@ button:focus {
 
 .theme-seg-btn.active .theme-seg-label {
   color: #1c1c1e;
+}
+
+.data-seg {
+  gap: 4px;
+}
+
+.data-seg-btn .theme-seg-label {
+  color: #3c3c43;
+}
+
+.data-seg-danger .theme-seg-icon,
+.data-seg-danger .theme-seg-label {
+  color: #ff3b30;
 }
 
 /* ═══════════════════════════════════════════════════
