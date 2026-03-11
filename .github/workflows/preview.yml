@@ -1,10 +1,15 @@
-name: Deploy Preview
+name: Deploy
 
 on:
   push:
-    branches: [ main ]  # 只要 push 到 main 就触发
+    branches: [ main ]  # 任何 push 到 main 都更新预览站
   pull_request:
-    branches: [ main ]
+    branches: [ main ]  # PR 部署到独立预览目录
+
+# 并发控制：同一 ref 上的新 run 会取消前一个未完成的 run
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
@@ -24,14 +29,50 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: BASE_URL=/wants_record_pwa/previews/latest/ npm run build
+      # ── 提取部署元信息（短 SHA、首行 message）──────────────────────────────
+      - name: Compute deploy meta
+        id: meta
+        run: |
+          echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "preview_msg=preview(pr-${{ github.event.number }}): ${{ github.event.pull_request.title }}" >> $GITHUB_OUTPUT
+          else
+            FIRST_LINE=$(printf '%s' "$COMMIT_MSG" | head -1)
+            echo "preview_msg=preview(latest): ${GITHUB_SHA::7} ${FIRST_LINE}" >> $GITHUB_OUTPUT
+            echo "prod_msg=release: ${GITHUB_SHA::7} ${FIRST_LINE}" >> $GITHUB_OUTPUT
+          fi
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
 
-      - name: Deploy to GitHub Pages
+      # ── 预览站（每次 push/PR 都执行）────────────────────────────────────────
+      - name: Build for preview
+        run: npm run build
+        env:
+          # PR → previews/pr-{n}/  |  push → previews/latest/
+          BASE_URL: ${{ github.event_name == 'pull_request' && format('/wants_record_pwa/previews/pr-{0}/', github.event.number) || '/wants_record_pwa/previews/latest/' }}
+
+      - name: Deploy to preview
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: dist
           target-folder: ${{ github.event_name == 'pull_request' && format('previews/pr-{0}', github.event.number) || 'previews/latest' }}
           clean: false
-          commit-message: 'Deploy preview for PR #${{ github.event.number }}'
+          commit-message: ${{ steps.meta.outputs.preview_msg }}
+
+      # ── 正式站（仅当 commit message 含 [release] 时执行）───────────────────
+      # 使用方式：git commit -m "v1.2.0 [release] 发布说明"
+      - name: Build for production
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')
+        run: npm run build
+        # 不设置 BASE_URL → vite.config.ts 中的默认值 /wants_record_pwa/ 生效
+
+      - name: Deploy to production
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: dist
+          # target-folder 不设置 → 部署到 gh-pages 根目录
+          clean: false  # 保留 previews/ 子目录，不清除根目录其他文件
+          commit-message: ${{ steps.meta.outputs.prod_msg }}
