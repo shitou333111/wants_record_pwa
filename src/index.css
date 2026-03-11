@@ -130,7 +130,7 @@ body {
   top: env(safe-area-inset-top);
   left: 0;
   right: 0;
-  bottom: 92px;
+  bottom: 95px;
   margin-bottom: 0px;
   display: flex;
   flex-direction: column;
@@ -693,7 +693,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0rem;
-  padding: 1rem 1rem 100px;
+  padding: 1rem 1rem 120px;
   margin-bottom: 0;
   overflow-x: hidden;
   margin-top: 0rem;

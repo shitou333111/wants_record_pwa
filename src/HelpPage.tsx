@@ -233,7 +233,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
             <p className="help-row-text">补充更多资料</p>
           </div>
           <div className="help-row">
-            <p className="help-row-text"><a href="https://wj.qq.com/s2/25934282/dfce/" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">点击这里</a>或扫码，反馈Bug和需求  <img src="./feedback.png" alt="腾讯问卷扫码" className="help-feedback-Qcode" onClick={() => setShowFeedbackImg(true)} /> </p>
+            <p className="help-row-text"><a href="https://wj.qq.com/s2/25934282/dfce/" target="_blank" rel="noopener noreferrer external" referrerPolicy="no-referrer">点击这里</a>或扫码，反馈Bug和需求  <img src="./feedback.png" alt="腾讯问卷扫码" className="help-feedback-Qcode" onClick={() => setShowFeedbackImg(true)} /> </p>
           </div>
         </div>
       </div>
