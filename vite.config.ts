@@ -26,11 +26,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       workbox: {
         cleanupOutdatedCaches: true,
-        // skipWaiting 故意不设置 — 使用 prompt 模式，由用户点击触发更新
-        // 新 SW 安装后进入 waiting 状态，等待 SKIP_WAITING 消息
+        // autoUpdate 模式：新 SW 安装后自动 skipWaiting 并接管页面
+        skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       },
