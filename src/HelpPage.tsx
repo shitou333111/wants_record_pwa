@@ -206,7 +206,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
             <p className="help-row-text"><strong>⚡</strong>：一键启动释放练习，不针对特定情绪，自动循环进行。释放引导语可在本页上方自定义。</p>
           </div>
           <div className="help-row">
-            <p className="help-row-text">应用图标 <img src="./icon-192x192.png" alt="应用图标" className="help-inline-icon" /> 的选择：情绪或许像烟花，释放了会更美好～</p>
+            <p className="help-row-text"><img src="./icon-192x192.png" alt="应用图标" className="help-inline-icon" />：应用图标的选择：情绪或许像烟花，释放了会更美好～</p>
           </div>
         </div>
       </div>
