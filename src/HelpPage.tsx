@@ -247,6 +247,9 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
         </div>
       )}
 
+      {/* ── 构建版本 ── */}
+      <div className="help-build-time">构建时间 {__BUILD_TIME__}</div>
+
     </div>
   );
 };

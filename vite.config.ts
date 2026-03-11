@@ -5,6 +5,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vitejs.dev/config/
 export default defineConfig({
   base: process.env.BASE_URL || '/wants_record_pwa/',
+  define: {
+    // 构建时间戳，注入为全局常量，格式：YYYY-MM-DD HH:mm (UTC+8)
+    __BUILD_TIME__: JSON.stringify(
+      new Date().toLocaleString('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      })
+    ),
+  },
   server: {
     host: '0.0.0.0', // 关键配置：监听所有网络接口
     port: 5173,       // 固定端口5173
