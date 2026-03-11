@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { HomeStepConfig, FIXED_HOME_FINAL, loadHomeSteps } from './releaseConfig';
 import { Pie, Bar } from 'react-chartjs-2';
 import {
@@ -1265,11 +1265,16 @@ const App: React.FC = () => {
   };
 
   // 控制首页滚动锁：只加/删 class，避免直接改写 body/html 内联样式
-  // 注意：首次提示蒙层可见时不加锁——等蒙层关闭后再加，此时 iOS 视口已稳定，
-  // 避免 backdrop-filter 蒙层与 home-scroll-lock 同帧渲染导致 fixed 元素坐标偏移
-  // 使用 useLayoutEffect（同步、在浏览器绘制前执行），确保冷启动第一帧就带锁，
-  // 消除 useEffect 异步导致的「首帧无锁 → iOS 视口未稳定 → 托盘栏偏移」问题
-  useLayoutEffect(() => {
+  // 注意：首次提示蒙层可见时不加锁——等蒙层关闭后再加，此时 iOS 视口已稳定。
+  //
+  // 使用 useEffect（而非 useLayoutEffect）：
+  // useLayoutEffect 在浏览器绘制前执行，此时 iOS 尚未将 safe-area-inset-bottom
+  // 传递给 CSS 引擎，100dvh 会被计算为不含 home indicator 的错误值。
+  // html/body 被锁定到这个错误高度后，iOS WebKit 会以 html 元素为含块来定位
+  // position:fixed 子元素，导致托盘栏上移约 34px（home indicator 高度）。
+  // useEffect 在首帧绘制后触发，此时 iOS 已完成视口初始化，dvh 值恢复正确，
+  // 再加锁不会产生坐标系问题。
+  useEffect(() => {
     const shouldLock = activeTab === 'home' && !showEditPage && !showFirstTimeHint;
 
     if (shouldLock) {
