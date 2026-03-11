@@ -1571,7 +1571,7 @@ const App: React.FC = () => {
                   上一月
                 </button>
                 <div className="current-month">
-                  {selectedDayData ? selectedDayData.date.replace(/-/g, '.') : `${currentDate.getFullYear()}.${String(currentDate.getMonth() + 1).padStart(2, '0')}.${String(currentDate.getDate()).padStart(2, '0')}`}
+                  {`${currentDate.getFullYear()}年${String(currentDate.getMonth() + 1).padStart(2, '0')}月`}
                 </div>
                 <button 
                   className="nav-button"
