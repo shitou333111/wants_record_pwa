@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: process.env.BASE_URL || '/wants_record_pwa/',
+  base: process.env.BASE_URL || '/',
   define: {
     // 构建时间戳，注入为全局常量，格式：YYYY-MM-DD HH:mm (UTC+8)
     __BUILD_TIME__: JSON.stringify(

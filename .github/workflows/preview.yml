@@ -51,7 +51,7 @@ jobs:
         run: npm run build
         env:
           # PR → previews/pr-{n}/  |  push → previews/latest/
-          BASE_URL: ${{ github.event_name == 'pull_request' && format('/wants_record_pwa/previews/pr-{0}/', github.event.number) || '/wants_record_pwa/previews/latest/' }}
+          BASE_URL: ${{ github.event_name == 'pull_request' && format('/previews/pr-{0}/', github.event.number) || '/previews/latest/' }}
 
       - name: Deploy to preview
         uses: JamesIves/github-pages-deploy-action@v4
