@@ -130,7 +130,7 @@ body {
   top: env(safe-area-inset-top);
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+  bottom: 92px;
   margin-bottom: 0px;
   display: flex;
   flex-direction: column;
@@ -832,7 +832,9 @@ body {
 /* 底部托盘 */
 .tab-bar {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  /* bottom: calc(40px + env(safe-area-inset-bottom)); */
+  bottom: 26px;
+  /* bottom: env(safe-area-inset-bottom); */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -855,7 +857,9 @@ body {
   -ms-user-select: none;
   flex-wrap: nowrap;
   justify-content: center;
+  /* 确保托盘栏在所有页面上都保持一致的位置 */
   pointer-events: auto;
+  /* 确保托盘栏不受body定位影响 */
   will-change: transform;
 }
 
