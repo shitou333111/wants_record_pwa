@@ -167,11 +167,11 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
         </div>
         <div className="help-list">
           <div className="help-row">
-            <p className="help-row-text">B 站搜索 <strong>"92年原始释放法"</strong> 原版视频</p>
+            <p className="help-row-text">B站 <a href="https://www.bilibili.com/video/BV14KKozTEkE" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">92年原始释放法8集</a></p>
           </div>
           <div className="help-row">
             <p className="help-row-text">
-              B 站 <img src="https://i1.hdslb.com/bfs/face/8d7a0d1e4e87ac4604a5e8d5a5334eb1cfe393aa.jpg" alt="B站头像" className="help-inline-icon" referrerPolicy="no-referrer" /><a href="https://space.bilibili.com/2104376857" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">哈师傅不叫哈师父</a>，分享释放法相关的视频和直播。其讲解的<a href="https://www.bilibili.com/video/BV14KKozTEkE" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">释放法简介</a>可以作为入门视频
+              B站<img src="https://i1.hdslb.com/bfs/face/8d7a0d1e4e87ac4604a5e8d5a5334eb1cfe393aa.jpg" alt="B站头像" className="help-inline-icon" referrerPolicy="no-referrer" /><a href="https://space.bilibili.com/2104376857" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">哈师傅不叫哈师父</a>，分享释放法相关的视频和直播。其讲解的<a href="https://www.bilibili.com/video/BV14KKozTEkE" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">释放法简介</a>可以作为入门视频
             </p>
           </div>
           <div className="help-row">

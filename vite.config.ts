@@ -36,7 +36,7 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: '情绪释放',
+        name: '情绪释放APP',
         short_name: '情绪释放',
         description: '情绪释放',
         theme_color: '#ffffff',
