@@ -130,7 +130,7 @@ body {
   top: env(safe-area-inset-top);
   left: 0;
   right: 0;
-  bottom: 95px;
+  bottom: 90px;
   margin-bottom: 0px;
   display: flex;
   flex-direction: column;
@@ -2441,10 +2441,6 @@ button:focus {
 /* ═══════════════════════════════════════════════════
    外观模式切换控件
    ═══════════════════════════════════════════════════ */
-.theme-card {
-  /* inherits help-card styles */
-}
-
 .theme-row {
   display: flex;
   align-items: center;

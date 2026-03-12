@@ -1351,7 +1351,7 @@ const App: React.FC = () => {
           <div className="first-time-hint-overlay">
             <div className="first-time-hint-content">
               <div className="first-time-hint-icon">
-                <img src="./icon-192x192.png" alt="logo" className="first-time-hint-logo" />
+                <img src="/icon-192x192.png" alt="logo" className="first-time-hint-logo" />
               </div>
               <div className="first-time-hint-title">欢迎使用</div>
               <div className="first-time-hint-text">

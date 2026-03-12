@@ -171,15 +171,15 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
           </div>
           <div className="help-row">
             <p className="help-row-text">
-              B 站 <img src="https://i1.hdslb.com/bfs/face/8d7a0d1e4e87ac4604a5e8d5a5334eb1cfe393aa.jpg" alt="B站头像" className="help-inline-icon" /><a href="https://space.bilibili.com/2104376857" target="_blank" rel="noopener noreferrer">哈师傅不叫哈师父</a>，分享释放法相关的视频和直播。其讲解的<a href="https://www.bilibili.com/video/BV14KKozTEkE" target="_blank" rel="noopener noreferrer">释放法简介</a>可以作为入门视频
+              B 站 <img src="https://i1.hdslb.com/bfs/face/8d7a0d1e4e87ac4604a5e8d5a5334eb1cfe393aa.jpg" alt="B站头像" className="help-inline-icon" referrerPolicy="no-referrer" /><a href="https://space.bilibili.com/2104376857" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">哈师傅不叫哈师父</a>，分享释放法相关的视频和直播。其讲解的<a href="https://www.bilibili.com/video/BV14KKozTEkE" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">释放法简介</a>可以作为入门视频
             </p>
           </div>
           <div className="help-row">
-            <p className="help-row-text">相关<strong>书籍</strong>《决定自由》《莱斯特自传》等，风的聊天记录，情绪表。都可以在<a href="https://pan.baidu.com/s/1SDRgX19wktgtWIDdCoNpbg?pwd=0000 提取码: 0000" target="_blank"><img src="./baidunetdisk.png" alt="百度网盘" className="help-inline-icon" />百度网盘</a>中自行下载</p>
+            <p className="help-row-text">相关<strong>书籍</strong>《决定自由》《莱斯特自传》等，风的聊天记录，情绪表。都可以在<a href="https://pan.baidu.com/s/1SDRgX19wktgtWIDdCoNpbg?pwd=0000 提取码: 0000" target="_blank" referrerPolicy="no-referrer"><img src="/baidunetdisk.png" alt="百度网盘" className="help-inline-icon" />百度网盘</a>中自行下载</p>
           </div>
           <div className="help-row">
             <p className="help-row-text">
-              苹果手机推荐应用 <a href="https://apps.apple.com/cn/app/id6754316888" target="_blank" rel="noopener noreferrer">释放法练习</a>
+              苹果手机推荐应用 <a href="https://apps.apple.com/cn/app/id6754316888" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">释放法练习</a>
             </p>
           </div>
         </div>
@@ -208,7 +208,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
             <p className="help-row-text"><strong>⚡</strong>：一键启动释放练习，不针对特定情绪，自动循环进行。释放引导语可在本页上方自定义。</p>
           </div>
           <div className="help-row">
-            <p className="help-row-text"><img src="./icon-192x192.png" alt="应用图标" className="help-inline-icon" />：应用图标的选择：情绪或许像烟花，释放了会更美好～</p>
+            <p className="help-row-text"><img src="/icon-192x192.png" alt="应用图标" className="help-inline-icon" />：应用图标的选择：情绪或许像烟花，释放了会更美好～</p>
           </div>
         </div>
       </div>
@@ -233,7 +233,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
             <p className="help-row-text">补充更多资料</p>
           </div>
           <div className="help-row">
-            <p className="help-row-text"><a href="https://wj.qq.com/s2/25934282/dfce/" target="_blank" rel="noopener noreferrer external" referrerPolicy="no-referrer">点击这里</a>或扫码，反馈Bug和需求  <img src="./feedback.png" alt="腾讯问卷扫码" className="help-feedback-Qcode" onClick={() => setShowFeedbackImg(true)} /> </p>
+            <p className="help-row-text"><a href="https://wj.qq.com/s2/25934282/dfce/" target="_blank" rel="noopener noreferrer external" referrerPolicy="no-referrer">点击这里</a>或扫码，反馈Bug和需求  <img src="/feedback.png" alt="腾讯问卷扫码" className="help-feedback-Qcode" onClick={() => setShowFeedbackImg(true)} /> </p>
           </div>
         </div>
       </div>
@@ -245,7 +245,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onExport, onImportFile, onClearData
           onClick={() => setShowFeedbackImg(false)}
           onTouchEnd={(e) => { e.preventDefault(); setShowFeedbackImg(false); }}
         >
-          <img src="./feedback.png" alt="腾讯问卷扫码" className="feedback-lightbox-img" />
+          <img src="/feedback.png" alt="腾讯问卷扫码" className="feedback-lightbox-img" />
         </div>
       )}
 
